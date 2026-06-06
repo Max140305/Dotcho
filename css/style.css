@@ -577,7 +577,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  z-index: 2;
+  z-index: 10; /* above mini-cup */
 }
 
 .badge-loved.most {
@@ -596,7 +596,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   font-size: 0.95rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  z-index: 3;
+  z-index: 10; /* above mini-cup */
 }
 
 .menu-body {
@@ -1239,7 +1239,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .cart-line-cup::after, .co-line-cup::after, .trk-item-cup::after { content:''; position:absolute; left:50%; top:46%; transform:translate(-50%,-50%); width:60%; height:60%; border-radius:50% 50% 46% 46%; background:linear-gradient(160deg, var(--maroon-warm), var(--chocolate)); opacity:.85; }
 
 /* ---- availability badges ---- */
-.badge-low { position:absolute; top:.7rem; left:.7rem; background:var(--accent-warm); color:#fff; font-size:.68rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:.28rem .6rem; border-radius:var(--r-pill); box-shadow:0 2px 8px rgba(0,0,0,.15); }
+.badge-low { position:absolute; top:.7rem; left:.7rem; background:var(--accent-warm); color:#fff; font-size:.68rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:.28rem .6rem; border-radius:var(--r-pill); box-shadow:0 2px 8px rgba(0,0,0,.15); z-index:10; }
 .order-avail { margin:.2rem 0 1rem; font-size:.85rem; font-weight:600; padding:.55rem .85rem; border-radius:8px; }
 .order-avail.out { background:var(--red-light, #FBE0DE); color:#B5302E; }
 .order-avail.low { background:#FFF3D6; color:#9a5b00; }

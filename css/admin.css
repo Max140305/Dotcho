@@ -972,3 +972,12 @@ input, textarea, select { font-family: inherit; font-size: inherit; }
   .mbr-pts::before  { content:'⭐ '; }
   .mbr-when::before { content:'Last: '; color:var(--ink-mute); }
 }
+
+/* ---- lang toggle in sidebar ---- */
+.sidebar-footer .lang-toggle {
+  width: 100%; background: var(--ivory-dark, #EFE6D2); border: none;
+  border-radius: 8px; padding: .5rem; font-size: .78rem; font-weight: 700;
+  letter-spacing: .08em; cursor: pointer; color: var(--maroon-deep);
+  margin-bottom: .5rem; transition: background .15s;
+}
+.sidebar-footer .lang-toggle:hover { background: var(--cream); }
