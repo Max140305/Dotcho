@@ -13,6 +13,7 @@ const STORAGE_KEYS = {
   CART:        'dotcho_cart',
   NOTIFS:      'dotcho_notifs',
   LEDGER:      'dotcho_ledger',
+  STORE_STATUS: 'dotcho_store_status',
   OVERRIDE_SEED: 'dotcho_override_seeded',
 };
 
@@ -301,6 +302,54 @@ const Storage = {
   },
 
   // ============================================================
+  // STORE STATUS (open/closed toggle — set by admin)
+  // ============================================================
+  getStoreStatus() {
+    return this._get(STORAGE_KEYS.STORE_STATUS, { open: true, updatedAt: null });
+  },
+  setStoreStatus(open) {
+    const s = { open, updatedAt: new Date().toISOString() };
+    this._set(STORAGE_KEYS.STORE_STATUS, s);
+    this.addNotif({
+      type: 'store', icon: open ? '🟢' : '🔴',
+      title: open ? 'Toko dibuka' : 'Toko ditutup',
+      body: open ? 'Customer kini bisa melakukan order.' : 'Order dinonaktifkan sementara.',
+    });
+    return s;
+  },
+  isStoreOpen() { return this.getStoreStatus().open; },
+
+  // ============================================================
+  // CANCEL ORDER
+  // ============================================================
+  cancelOrder(id) {
+    const orders = this.getOrders();
+    const o = orders.find(x => x.id === id);
+    if (!o || o.status === 'done') return false;
+    o.status = 'cancelled';
+    o.cancelledAt = new Date().toISOString();
+    this._set(STORAGE_KEYS.ORDERS, orders);
+    // Restore inventory (reverse the deduction)
+    this._restoreForOrder(o);
+    this.addNotif({ type: 'order', icon: '❌', title: `Order dibatalkan`, body: `${o.id} · ${o.customer?.name || 'Guest'}` });
+    return true;
+  },
+  _restoreForOrder(order) {
+    const inv = this.getInventory();
+    const byId = Object.fromEntries(inv.map(i => [i.id, i]));
+    for (const line of order.items) {
+      const recipe = this.getRecipe(line.itemId);
+      if (!recipe) continue;
+      for (const [ingId, qty] of Object.entries(recipe)) {
+        const ing = byId[ingId];
+        if (!ing) continue;
+        ing.current = +(ing.current + qty * line.qty).toFixed(3);
+      }
+    }
+    this.saveInventory(inv);
+  },
+
+  // ============================================================
   // AUTH
   // ============================================================
   login(user, pass) {
@@ -318,8 +367,16 @@ const Storage = {
   // DEMO RESET
   // ============================================================
   resetAll() {
+    // Clear localStorage first
     Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
-    this.init();
+    // Also clear Firebase so sync doesn't re-populate old data
+    if (typeof FB !== 'undefined' && FB.ready && FB.db) {
+      FB.db.ref('store').remove()
+        .then(() => { this.init(); location.reload(); })
+        .catch(() => { this.init(); location.reload(); });
+    } else {
+      this.init();
+    }
   },
 
   _rupiah(n) { return 'Rp' + (n || 0).toLocaleString('id-ID'); },

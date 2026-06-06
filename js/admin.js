@@ -443,6 +443,42 @@ function renderReviewsView() {
       Illustrative — activates with customer accounts in Phase 2.</div>`;
 }
 
+
+// === STORE OPEN/CLOSE TOGGLE ===
+function renderStoreToggle() {
+  const existing = $('store-toggle-wrap');
+  if (existing) existing.remove();
+  const status = Storage.getStoreStatus();
+  const wrap = document.createElement('div');
+  wrap.id = 'store-toggle-wrap';
+  wrap.innerHTML = `
+    <div style="display:flex;align-items:center;gap:1rem;background:${status.open ? '#D8F3DC' : '#FBE0DE'};border:1.5px solid ${status.open ? '#2D6A4F' : '#B5302E'};border-radius:12px;padding:.9rem 1.2rem;margin-bottom:1.5rem;cursor:pointer;" onclick="toggleStore()">
+      <span style="font-size:1.5rem;">${status.open ? '🟢' : '🔴'}</span>
+      <div style="flex:1;">
+        <div style="font-weight:700;color:${status.open ? '#1b4332' : '#B5302E'};font-size:.95rem;">
+          Toko ${status.open ? 'BUKA' : 'TUTUP'}
+        </div>
+        <div style="font-size:.76rem;color:#666;margin-top:.1rem;">
+          ${status.open ? 'Customer bisa order sekarang · Klik untuk tutup' : 'Order dinonaktifkan · Klik untuk buka'}
+        </div>
+      </div>
+      <div style="background:${status.open ? '#2D6A4F' : '#B5302E'};color:#fff;padding:.4rem .9rem;border-radius:999px;font-size:.78rem;font-weight:700;">
+        ${status.open ? 'Tutup Toko' : 'Buka Toko'}
+      </div>
+    </div>`;
+  const view = $('view-dashboard');
+  if (view) view.insertBefore(wrap, view.querySelector('.stat-grid') || view.firstChild);
+}
+
+function toggleStore() {
+  const current = Storage.isStoreOpen();
+  const msg = current ? 'Tutup toko sekarang? Customer tidak bisa order.' : 'Buka toko sekarang?';
+  if (!confirm(msg)) return;
+  Storage.setStoreStatus(!current);
+  renderStoreToggle();
+  renderNotifs();
+}
+
 // === ROUTER ===
 function renderView(view) {
   if (view === 'dashboard') renderDashboard();
@@ -455,6 +491,15 @@ function renderView(view) {
 injectNotifBell();
 renderView('dashboard');
 renderOrders();
+
+
+function cancelOrderAdmin(id) {
+  if (!confirm('Batalkan order ini? Stok bahan akan dikembalikan.')) return;
+  Storage.cancelOrder(id);
+  renderOrders();
+  renderNotifs();
+  renderView('dashboard');
+}
 
 // === LIVE SYNC ===
 window.addEventListener('storage', (e) => {

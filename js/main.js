@@ -212,9 +212,33 @@ function tickLiveStatus() {
   if (el && typeof SOCIAL_PROOF !== 'undefined') el.textContent = SOCIAL_PROOF.cupsToday;
 }
 
+
+// ============================================================
+// STORE STATUS — banner + disable ordering when closed
+// ============================================================
+function checkStoreStatus() {
+  if (typeof Storage === 'undefined') return;
+  const open = Storage.isStoreOpen();
+  const banner = document.getElementById('store-closed-banner');
+  if (banner) banner.style.display = open ? 'none' : 'block';
+  // Disable all Order/Add to cart buttons when closed
+  if (!open) {
+    document.querySelectorAll('.menu-add, .add-cart-btn, .order-now-btn, .pay-cta, .btn-maroon-full').forEach(btn => {
+      btn.disabled = true;
+      btn.style.opacity = '0.4';
+      btn.title = 'Toko sedang tutup';
+    });
+    document.querySelectorAll('.menu-card').forEach(card => {
+      card.style.pointerEvents = 'none';
+      card.style.opacity = '0.6';
+    });
+  }
+}
+
 // ---------- init ----------
 document.addEventListener('DOMContentLoaded', () => {
   injectCartUI();
+  checkStoreStatus();
   mountFeaturedMenu();
   mountAllMenu();
   mountReviewsPreview();
@@ -226,6 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ---------- cross-tab sync ----------
 window.addEventListener('storage', (e) => {
+  if (e.key === STORAGE_KEYS.STORE_STATUS) { checkStoreStatus(); }
   if (e.key === STORAGE_KEYS.MENU_AVAIL || e.key === STORAGE_KEYS.INVENTORY) { mountFeaturedMenu(); mountAllMenu(); }
   if (e.key === STORAGE_KEYS.CART) { updateCartBadges(); if (document.getElementById('cart-drawer')?.classList.contains('open')) renderCartDrawer(); }
 });
