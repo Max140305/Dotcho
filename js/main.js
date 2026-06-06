@@ -262,4 +262,6 @@ window.addEventListener('storage', (e) => {
   if (e.key === STORAGE_KEYS.STORE_STATUS) { checkStoreStatus(); }
   if (e.key === STORAGE_KEYS.MENU_AVAIL || e.key === STORAGE_KEYS.INVENTORY) { mountFeaturedMenu(); mountAllMenu(); checkStoreStatus(); }
   if (e.key === STORAGE_KEYS.CART) { updateCartBadges(); if (document.getElementById('cart-drawer')?.classList.contains('open')) renderCartDrawer(); }
+  // Reviews: re-render preview + full list on any tab when a review is submitted (incl. via Firebase)
+  if (e.key === STORAGE_KEYS.REVIEWS_NEW) { mountAllReviews(); mountReviewsPreview(); }
 });

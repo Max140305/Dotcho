@@ -26,6 +26,7 @@ const SYNC_KEYS = [
   'dotcho_ledger',
   'dotcho_reviews_user',
   'dotcho_members',
+  'dotcho_store_status', // so admin open/close syncs to customer devices
 ];
 
 const FB = {

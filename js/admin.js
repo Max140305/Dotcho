@@ -7,6 +7,8 @@ if (!Storage.isAuthenticated()) window.location.replace('login.html');
 const $ = id => document.getElementById(id);
 const rupiah = n => 'Rp' + (n || 0).toLocaleString('id-ID');
 const stars = n => '★'.repeat(Math.floor(n)) + '☆'.repeat(5 - Math.floor(n));
+// i18n helper — falls back to key when i18n not yet loaded
+function t(key) { return (typeof i18n !== 'undefined') ? i18n.t(key) : key; }
 const timeAgo = (iso) => {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
   if (diff < 60) return Math.floor(diff) + 's ago';
@@ -169,7 +171,7 @@ function renderOrders() {
 }
 
 function renderOrderRow(o) {
-  const statusLabel = { new: 'New', progress: 'In Progress', done: 'Completed', cancelled: 'Cancelled' }[o.status] || o.status;
+  const statusLabel = { new:t('adm.status.new'), progress:t('adm.status.progress'), done:t('adm.status.done'), cancelled:t('adm.status.cancelled') }[o.status]||o.status;
   const items = o.items || [{ name: o.item, qty: o.qty, config: o.config }]; // legacy-safe
   const itemsHtml = items.map(l => {
     const meta = [];
@@ -181,12 +183,12 @@ function renderOrderRow(o) {
   }).join('');
 
   const paid = o.payment?.status === 'paid';
-  const payPill = `<span class="pay-pill ${paid ? 'paid' : 'unpaid'}">${paid ? 'PAID' : 'UNPAID'}${o.payment?.method ? ' · ' + o.payment.method.toUpperCase() : ''}</span>`;
+  const payPill = `<span class="pay-pill ${paid ? 'paid' : 'unpaid'}">${paid ? t('adm.paid_pill') : t('adm.unpaid_pill')}${o.payment?.method ? ' · ' + o.payment.method.toUpperCase() : ''}</span>`;
 
   let actions = '';
-  if (!paid) actions += `<button class="btn-sm" onclick="markPaid('${o.id}')">Mark paid</button>`;
-  if (o.status === 'new') actions += `<button class="btn-sm primary" onclick="updateOrder('${o.id}','progress')">Start prep</button>`;
-  else if (o.status === 'progress') actions += `<button class="btn-sm success" onclick="updateOrder('${o.id}','done')">Complete</button>`;
+  if (!paid) actions += `<button class="btn-sm" onclick="markPaid('${o.id}')">${t('adm.mark_paid')}</button>`;
+  if (o.status === 'new') actions += `<button class="btn-sm primary" onclick="updateOrder('${o.id}','progress')">${t('adm.start_prep')}</button>`;
+  else if (o.status === 'progress') actions += `<button class="btn-sm success" onclick="updateOrder('${o.id}','done')">${t('adm.complete')}</button>`;
   else actions += `<button class="btn-sm" disabled>—</button>`;
 
   return `
@@ -579,6 +581,14 @@ renderView('dashboard');
 renderOrders();
 renderMembers(); // populate the members badge on load
 
+
+// Re-render active view when language is toggled
+window.addEventListener('langchange', () => {
+  const activeView = (document.querySelector('.view.active')?.id || 'view-dashboard').replace('view-', '');
+  renderView(activeView);
+  renderOrders();
+  updateNotifCount();
+});
 
 function cancelOrderAdmin(id) {
   if (!confirm('Batalkan order ini? Stok bahan akan dikembalikan.')) return;
