@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Sign In — .Cho Admin</title>
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+  <div class="login-shell">
+
+    <!-- LEFT — Brand side -->
+    <div class="login-side">
+      <div>
+        <div class="login-brand">.Cho</div>
+        <div class="login-brand-tag">Internal · Owner Dashboard</div>
+      </div>
+      <div class="login-quote">
+        "Opaper handles transactions.<br>
+        .Cho website handles <em>relationships</em>."
+        <div class="login-quote-attr">— System Design Proposal</div>
+      </div>
+    </div>
+
+    <!-- RIGHT — Form -->
+    <div class="login-form-wrap" style="position: relative;">
+      <a href="../index.html" class="login-back">← Back to public site</a>
+      <div class="login-form">
+        <h1>Welcome back.</h1>
+        <p class="subtitle">Sign in to manage orders, inventory, and customer relationships.</p>
+
+        <div class="error-msg" id="error">Invalid username or password.</div>
+
+        <div class="field">
+          <label for="user">Username</label>
+          <input id="user" type="text" autocomplete="username" autofocus>
+        </div>
+
+        <div class="field">
+          <label for="pass">Password</label>
+          <input id="pass" type="password" autocomplete="current-password">
+        </div>
+
+        <button class="btn-primary" id="signin">Sign in →</button>
+
+        <div class="demo-hint">
+          <strong>Demo credentials:</strong><br>
+          Username: <strong>biru</strong> · Password: <strong>dotcho2026</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/storage.js"></script>
+  <script>
+    // Auto-redirect if already logged in
+    if (Storage.isAuthenticated()) {
+      window.location.href = '/admin';
+    }
+
+    const userEl = document.getElementById('user');
+    const passEl = document.getElementById('pass');
+    const errorEl = document.getElementById('error');
+
+    function attemptLogin() {
+      const ok = Storage.login(userEl.value.trim(), passEl.value);
+      if (ok) {
+        window.location.href = '/admin';
+      } else {
+        errorEl.classList.add('show');
+        passEl.value = '';
+        passEl.focus();
+      }
+    }
+
+    document.getElementById('signin').addEventListener('click', attemptLogin);
+    [userEl, passEl].forEach(el => el.addEventListener('keypress', e => {
+      if (e.key === 'Enter') attemptLogin();
+    }));
+  </script>
+</body>
+</html>

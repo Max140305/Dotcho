@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>.Cho Admin Dashboard</title>
+  <!-- Fast auth gate: runs before any DOM renders — no flash of admin UI -->
+  <script>
+    if (!localStorage.getItem('dotcho_admin_auth')) {
+      window.location.replace('/admin/login');
+    }
+  </script>
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+
+  <!-- Demo ribbon -->
+  <div class="demo-ribbon">
+    🍫 PROTOTYPE DEMO · Data resets aren't permanent · <button onclick="resetDemo()">Reset demo data</button>
+  </div>
+
+  <div class="admin-shell">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">.Cho</div>
+      <div class="sidebar-sub">Owner Dashboard</div>
+      <div class="sidebar-user" id="user-block">
+        Signed in as<br><strong id="user-name">biru</strong>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a class="sidebar-link active" data-view="dashboard">
+          <span>Dashboard</span>
+        </a>
+        <a class="sidebar-link" data-view="orders">
+          <span>Orders</span>
+          <span class="sidebar-badge" id="badge-orders">0</span>
+        </a>
+        <a class="sidebar-link" data-view="inventory">
+          <span>Inventory & Alerts</span>
+          <span class="sidebar-badge" id="badge-inventory">0</span>
+        </a>
+        <a class="sidebar-link" data-view="menu">
+          <span>Menu Management</span>
+        </a>
+        <a class="sidebar-link" data-view="reviews">
+          <span>Reviews & Customers</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="sidebar-logout" id="logout-btn">Sign out</button>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <main class="main">
+
+      <!-- ===== DASHBOARD VIEW ===== -->
+      <section class="view active" id="view-dashboard">
+        <div class="view-header">
+          <div>
+            <h1>Good day, Biru. 👋</h1>
+            <div class="subtitle" id="dashboard-date">Today's overview</div>
+          </div>
+        </div>
+
+        <div class="stat-grid" id="dashboard-stats"></div>
+
+        <div class="rev-grid">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Recent Orders</div>
+                <div class="panel-sub">Live feed from customer pre-order channel</div>
+              </div>
+              <button class="btn-sm" onclick="switchView('orders')">View all →</button>
+            </div>
+            <div class="panel-body tight" id="dashboard-orders"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Stock Alerts</div>
+                <div class="panel-sub">Items needing attention</div>
+              </div>
+              <button class="btn-sm" onclick="switchView('inventory')">Manage →</button>
+            </div>
+            <div class="panel-body tight" id="dashboard-alerts"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== ORDERS VIEW ===== -->
+      <section class="view" id="view-orders">
+        <div class="view-header">
+          <div>
+            <h1>Orders</h1>
+            <div class="subtitle">Manage pre-orders flowing in from the customer website</div>
+          </div>
+          <button class="btn-sm" onclick="window.open('../menu.html', '_blank')">↗ Open customer site</button>
+        </div>
+
+        <div class="tabs" id="order-tabs">
+          <button class="tab active" data-status="all">All <span class="count" id="cnt-all">0</span></button>
+          <button class="tab" data-status="new">New <span class="count" id="cnt-new">0</span></button>
+          <button class="tab" data-status="progress">In Progress <span class="count" id="cnt-progress">0</span></button>
+          <button class="tab" data-status="done">Completed <span class="count" id="cnt-done">0</span></button>
+        </div>
+
+        <div class="panel">
+          <div class="panel-body tight" id="orders-list"></div>
+        </div>
+      </section>
+
+      <!-- ===== INVENTORY VIEW ===== -->
+      <section class="view" id="view-inventory">
+        <div class="view-header">
+          <div>
+            <h1>Inventory & Smart Alerts</h1>
+            <div class="subtitle">Predictive stock monitoring · Vendor coordination · Auto-notification</div>
+          </div>
+        </div>
+
+        <div class="stat-grid" id="inventory-stats"></div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">All Ingredients</div>
+              <div class="panel-sub">Color coding: Green OK · Amber Warning · Red Critical</div>
+            </div>
+          </div>
+          <div class="panel-body tight" id="inventory-list"></div>
+        </div>
+      </section>
+
+      <!-- ===== MENU MANAGEMENT VIEW ===== -->
+      <section class="view" id="view-menu">
+        <div class="view-header">
+          <div>
+            <h1>Menu Management</h1>
+            <div class="subtitle">Toggle availability — changes reflect instantly on customer site</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-body tight" id="menu-list"></div>
+        </div>
+      </section>
+
+      <!-- ===== REVIEWS & CUSTOMERS VIEW ===== -->
+      <section class="view" id="view-reviews">
+        <div class="view-header">
+          <div>
+            <h1>Reviews & Customers</h1>
+            <div class="subtitle">Voice of the customer + segmentation insights</div>
+          </div>
+        </div>
+
+        <div class="stat-grid" id="review-stats"></div>
+
+        <div class="rev-grid">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">All Reviews</div>
+                <div class="panel-sub">Verified · ordered chronologically</div>
+              </div>
+            </div>
+            <div class="panel-body tight" id="reviews-list"></div>
+          </div>
+
+          <div>
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-title">Rating Distribution</div>
+                </div>
+              </div>
+              <div class="panel-body" id="rating-dist"></div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-title">Customer Segmentation</div>
+                  <div class="panel-sub">Phase 2 — once customer accounts launch</div>
+                </div>
+              </div>
+              <div class="panel-body" id="customer-segment"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ===== MODAL (for WA template etc) ===== -->
+  <div class="modal-bg" id="modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-title">Title</div>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer" id="modal-footer">
+        <button class="btn-sm" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/storage.js"></script>
+  <script src="../js/admin.js"></script>
+</body>
+</html>
