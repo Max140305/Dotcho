@@ -23,10 +23,10 @@
     <div class="nav-inner">
       <a href="index.html" class="brand"><span class="dot">.</span>Cho</a>
       <div class="nav-links">
-        <a href="index.html">Home</a>
-        <a href="menu.html">Menu</a>
-        <a href="reviews.html">Reviews</a>
-        <a href="index.html#story">Our Story</a>
+        <a href="index.html" data-i18n="nav.home">Home</a>
+        <a href="menu.html" data-i18n="nav.menu">Menu</a>
+        <a href="reviews.html" data-i18n="nav.reviews">Reviews</a>
+        <a href="index.html#story" data-i18n="nav.story">Our Story</a>
       </div>
       <div class="nav-cta">
         <button class="lang-toggle">EN / ID</button>
@@ -38,8 +38,8 @@
   <section class="section" style="padding-top: 4rem;">
     <div class="section-inner">
       <a href="menu.html" class="back-link">← Continue shopping</a>
-      <div class="eyebrow">Secure checkout</div>
-      <h1 class="co-h1">Almost there.</h1>
+      <div class="eyebrow" data-i18n="co.eye">Secure checkout</div>
+      <h1 class="co-h1" data-i18n="co.h1">Almost there.</h1>
 
       <div class="co-layout" id="co-layout">
         <!-- left: summary + details | right: payment -->
@@ -51,11 +51,11 @@
     <div class="footer-inner">
       <div class="footer-brand">
         <div class="brand"><span class="dot">.</span>Cho</div>
-        <p>Premium chocolate beverages brewed daily at Kantin FEB UGM.</p>
+        <p data-i18n="footer.tagline">Premium chocolate beverages brewed daily at Kantin FEB UGM.</p>
       </div>
-      <div class="footer-col"><h4>Order</h4><a href="menu.html">Full Menu</a></div>
-      <div class="footer-col"><h4>Community</h4><a href="reviews.html">All Reviews</a></div>
-      <div class="footer-col"><h4>Visit Us</h4><a>Kantin FEB UGM</a></div>
+      <div class="footer-col"><h4 data-i18n="footer.order">Order</h4><a href="menu.html" data-i18n="footer.fullmenu">Full Menu</a></div>
+      <div class="footer-col"><h4 data-i18n="footer.community">Community</h4><a href="reviews.html" data-i18n="footer.allreviews">All Reviews</a></div>
+      <div class="footer-col"><h4 data-i18n="footer.visit">Visit Us</h4><a>Kantin FEB UGM</a></div>
     </div>
     <div class="footer-bottom">
       <div>© 2026 .Cho · System design prototype for AKU3404</div>
@@ -77,7 +77,7 @@
   <script src="js/main.js"></script>
   <script src="js/i18n.js"></script>
   <script>
-    const state = { method: 'qris', name: '', phone: '', note: '' };
+    const state = { method: 'qris', name: '', phone: '', note: '', redeem: 0 };
 
     function lineCfg(l) {
       const c = [];
@@ -100,6 +100,13 @@
         return;
       }
       const subtotal = Storage.cartSubtotal();
+      // Loyalty: identify returning member by phone, compute redeem + earn.
+      const member = Storage.getMember(state.phone);
+      const maxRedeem = Math.min(member?.points || 0, Math.floor(subtotal / LOYALTY.REDEEM_VALUE));
+      state.redeem = Math.min(Math.max(0, state.redeem | 0), maxRedeem); // clamp to valid
+      const discount = state.redeem * LOYALTY.REDEEM_VALUE;
+      const total = Math.max(0, subtotal - discount);
+      const willEarn = Math.floor(total / LOYALTY.EARN_PER_RUPIAH);
       layout.innerHTML = `
         <div class="co-main">
           <div class="co-card">
@@ -127,11 +134,11 @@
 
           <div class="co-card">
             <h3 class="co-card-title">Pickup details</h3>
-            <label class="co-field"><span>Name for pickup *</span>
+            <label class="co-field"><span>${t('co.name')}</span>
               <input id="f-name" value="${state.name}" placeholder="e.g., Rania" oninput="state.name=this.value" /></label>
-            <label class="co-field"><span>WhatsApp (optional)</span>
-              <input id="f-phone" value="${state.phone}" placeholder="08xx — for payment & ready notifications" oninput="state.phone=this.value" /></label>
-            <label class="co-field"><span>Order note (optional)</span>
+            <label class="co-field"><span>${t('co.wa')}</span>
+              <input id="f-phone" value="${state.phone}" placeholder="08xx — kumpulkan poin loyalti & notifikasi" oninput="state.phone=this.value; refreshLoy()" /></label>
+            <label class="co-field"><span>${t('co.note')}</span>
               <input id="f-note" value="${state.note}" placeholder="e.g., ambil jam 12.30" oninput="state.note=this.value" /></label>
           </div>
         </div>
@@ -148,14 +155,16 @@
                 </button>`).join('')}
             </div>
 
+            <div id="loy-box">${loyaltyBox(member, maxRedeem, willEarn)}</div>
+
             <div class="co-totals">
               <div class="co-total-row"><span>Subtotal</span><span>${rupiah(subtotal)}</span></div>
-              <div class="co-total-row"><span>Service fee</span><span>Rp0</span></div>
-              <div class="co-total-row grand"><span>Total</span><span>${rupiah(subtotal)}</span></div>
+              ${discount > 0 ? `<div class="co-total-row" style="color:var(--maroon);"><span>${t('co.discount')} (${state.redeem} ${t('co.points')})</span><span>−${rupiah(discount)}</span></div>` : ''}
+              <div class="co-total-row grand"><span>Total</span><span>${rupiah(total)}</span></div>
             </div>
 
             <button class="btn-maroon-full pay-cta" onclick="startPayment()">
-              Pay · ${rupiah(subtotal)}
+              Pay · ${rupiah(total)}
             </button>
             <p class="co-secure">🔒 Semua pembayaran adalah simulasi untuk prototype ini. Tidak ada tagihan nyata.</p>
           </div>
@@ -163,6 +172,41 @@
     }
 
     function coQty(key, qty) { Storage.setCartQty(key, qty); updateCartBadges(); render(); }
+
+    // ---------- Loyalty (Phase 4) ----------
+    function loyaltyBox(member, maxRedeem, willEarn) {
+      const worth = pts => rupiah(pts * LOYALTY.REDEEM_VALUE);
+      let inner = `<div style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;color:var(--maroon-deep);font-weight:600;"><span>⭐</span><span>${t('co.earn')} +${willEarn} ${t('co.points')}</span></div>`;
+      if (member) {
+        inner += `<div style="font-size:.8rem;color:var(--text-soft);margin-top:.35rem;">${t('co.have')} <strong>${member.points} ${t('co.points')}</strong> (${worth(member.points)})</div>`;
+        if (state.redeem > 0) {
+          inner += `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:.55rem;">
+            <span style="font-size:.82rem;color:var(--maroon);font-weight:600;">−${state.redeem} ${t('co.points')} · ${worth(state.redeem)}</span>
+            <button type="button" onclick="clearRedeem()" style="background:none;border:1px solid var(--cream);border-radius:8px;padding:.32rem .7rem;font-size:.76rem;cursor:pointer;color:var(--text-soft);">${t('co.remove')}</button></div>`;
+        } else if (maxRedeem > 0) {
+          inner += `<button type="button" onclick="applyRedeem()" style="margin-top:.55rem;width:100%;background:var(--cream-light);border:1px solid var(--cream);border-radius:8px;padding:.55rem;font-size:.82rem;font-weight:600;cursor:pointer;color:var(--maroon-deep);">${t('co.usepoints')} · −${worth(maxRedeem)}</button>`;
+        }
+      } else if (!state.phone) {
+        inner += `<div style="font-size:.76rem;color:var(--text-soft);margin-top:.3rem;">${t('loy.guest')}</div>`;
+      }
+      return `<div style="background:var(--ivory,#FBF7F0);border:1px solid var(--cream);border-radius:10px;padding:.85rem .9rem;margin:1rem 0;">${inner}</div>`;
+    }
+    function refreshLoy() {
+      const subtotal = Storage.cartSubtotal();
+      const member = Storage.getMember(state.phone);
+      const maxRedeem = Math.min(member?.points || 0, Math.floor(subtotal / LOYALTY.REDEEM_VALUE));
+      state.redeem = Math.min(Math.max(0, state.redeem | 0), maxRedeem);
+      const total = Math.max(0, subtotal - state.redeem * LOYALTY.REDEEM_VALUE);
+      const box = document.getElementById('loy-box');
+      if (box) box.innerHTML = loyaltyBox(member, maxRedeem, Math.floor(total / LOYALTY.EARN_PER_RUPIAH));
+    }
+    function applyRedeem() {
+      const subtotal = Storage.cartSubtotal();
+      const member = Storage.getMember(state.phone);
+      state.redeem = Math.min(member?.points || 0, Math.floor(subtotal / LOYALTY.REDEEM_VALUE));
+      render();
+    }
+    function clearRedeem() { state.redeem = 0; render(); }
 
     // ---------- Payment flow ----------
     function fakeQR() {
@@ -222,6 +266,7 @@
         customer: { name: state.name.trim() || 'Guest', phone: state.phone.trim(), note: state.note.trim() },
         items,
         payment: { method: state.method, status: payStatus },
+        pointsToRedeem: state.redeem,
       });
       Storage.clearCart();
       updateCartBadges();
@@ -233,6 +278,7 @@
     });
 
     render();
+    window.addEventListener('langchange', render);
   </script>
 </body>
 </html>
