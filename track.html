@@ -7,6 +7,10 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <!-- Store closed banner — shown by JS if admin closed the store -->
+  <div id="store-closed-banner" style="display:none; background:#B5302E; color:#fff; text-align:center; padding:.9rem 1rem; font-weight:600; font-size:.9rem; position:sticky; top:0; z-index:999;">
+    🔴 <span data-i18n="store.closed">Toko Sedang Tutup</span> — <span data-i18n="store.closed.sub" style="font-weight:400; opacity:.9;">Order tidak dapat dilakukan saat ini.</span>
+  </div>
 
   <div class="live-bar">
     <div class="live-bar-inner">
@@ -60,6 +64,7 @@
   <script src="js/data.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/i18n.js"></script>
   <script>
     const orderId = getQueryParam('id');
     const isNew = getQueryParam('new') === '1';
@@ -149,9 +154,65 @@
 
         <div class="trk-actions">
           <a href="menu.html" class="btn-cream">Order more</a>
-          <a href="reviews.html" class="btn-maroon">Leave a review</a>
+          ${o.status === 'done' ? `<button class="btn-maroon" onclick="showReviewForm('${o.id}')">⭐ Leave a Review</button>` : ''}
+          ${(o.status === 'new' && !cancelled) ? `<button onclick="cancelCustomer('${o.id}')" style="background:none;border:1.5px solid #B5302E;color:#B5302E;padding:.85rem 1.8rem;border-radius:999px;font-weight:600;cursor:pointer;">Cancel Order</button>` : ''}
         </div>
-        <p class="co-secure" style="text-align:center;margin-top:1rem;">This page updates live as the kitchen advances your order.</p>`;
+        ${o.status === 'done' ? `<div id="review-form-wrap"></div>` : ''}
+        <p class="co-secure" style="text-align:center;margin-top:1rem;">This page updates live as the kitchen advances your order.</p>\`;
+    }
+
+    function cancelCustomer(id) {
+      if (!confirm('Batalkan pesanan ini?')) return;
+      const ok = Storage.cancelOrder(id);
+      if (ok) { toast('Order dibatalkan.', 'warn'); render(); }
+      else toast('Tidak bisa batalkan pesanan yang sudah diproses.', 'warn');
+    }
+
+    function showReviewForm(orderId) {
+      const wrap = document.getElementById('review-form-wrap');
+      if (!wrap || wrap.querySelector('.review-form-inner')) return; // already shown
+      const o = Storage.getOrder(orderId);
+      if (!o) return;
+      const menuOptions = o.items.map(l => `<option value="${l.itemId}">${l.name}</option>`).join('');
+      wrap.innerHTML = `
+        <div class="review-form-inner co-card" style="margin-top:1.2rem;">
+          <h3 class="co-card-title">⭐ Tulis Review</h3>
+          <div style="display:flex;gap:.5rem;margin-bottom:1rem;" id="star-row">
+            ${[1,2,3,4,5].map(s => `<button onclick="setStars(${s})" data-star="${s}" style="font-size:1.6rem;background:none;border:none;cursor:pointer;opacity:.4;">★</button>`).join('')}
+          </div>
+          <label class="co-field"><span>Menu yang dibeli</span>
+            <select id="rv-menu" style="width:100%;padding:.8rem;border:1px solid var(--cream);border-radius:8px;font-family:inherit;background:var(--cream-bg);">
+              ${menuOptions}
+            </select>
+          </label>
+          <label class="co-field"><span>Nama kamu</span>
+            <input id="rv-name" placeholder="e.g., Rania A." value="${o.customer?.name || ''}" style="width:100%;padding:.8rem .9rem;border:1px solid var(--cream);border-radius:8px;font-family:inherit;font-size:.92rem;background:var(--cream-bg);" />
+          </label>
+          <label class="co-field"><span>Review</span>
+            <textarea id="rv-text" placeholder="Ceritain pengalamanmu..." rows="3" style="width:100%;padding:.8rem .9rem;border:1px solid var(--cream);border-radius:8px;font-family:inherit;font-size:.92rem;background:var(--cream-bg);resize:vertical;"></textarea>
+          </label>
+          <button class="btn-maroon-full" onclick="submitReview('${orderId}')">Kirim Review →</button>
+        </div>`;
+      let selectedStars = 5;
+      setStars(5);
+      window._setStars = s => { selectedStars = s; };
+
+      window.setStars = function(s) {
+        selectedStars = s;
+        document.querySelectorAll('#star-row button').forEach(b => {
+          b.style.opacity = Number(b.dataset.star) <= s ? '1' : '.3';
+        });
+      };
+      window.submitReview = function(oid) {
+        const name = document.getElementById('rv-name').value.trim();
+        const text = document.getElementById('rv-text').value.trim();
+        const menuId = document.getElementById('rv-menu').value;
+        if (!name) { toast('Isi nama dulu ya', 'warn'); return; }
+        if (!text) { toast('Tulis review dulu ya', 'warn'); return; }
+        Storage.addReview({ menuId, author: name, avatar: name[0].toUpperCase(), rating: selectedStars, text });
+        wrap.innerHTML = '<div class="co-card" style="text-align:center;padding:2rem;margin-top:1rem;"><div style="font-size:2rem;">🎉</div><p style="font-weight:600;color:var(--maroon-deep);margin:.5rem 0;">Review terkirim!</p><p style="font-size:.85rem;color:var(--text-soft);">Terima kasih sudah sharing pengalamanmu.</p></div>';
+        toast('Review berhasil dikirim! ⭐', 'success');
+      };
     }
 
     render();

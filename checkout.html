@@ -7,6 +7,10 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <!-- Store closed banner — shown by JS if admin closed the store -->
+  <div id="store-closed-banner" style="display:none; background:#B5302E; color:#fff; text-align:center; padding:.9rem 1rem; font-weight:600; font-size:.9rem; position:sticky; top:0; z-index:999;">
+    🔴 <span data-i18n="store.closed">Toko Sedang Tutup</span> — <span data-i18n="store.closed.sub" style="font-weight:400; opacity:.9;">Order tidak dapat dilakukan saat ini.</span>
+  </div>
 
   <div class="live-bar">
     <div class="live-bar-inner">
@@ -71,6 +75,7 @@
   <script src="js/data.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/i18n.js"></script>
   <script>
     const state = { method: 'qris', name: '', phone: '', note: '' };
 
