@@ -61,7 +61,7 @@ const Storage = {
     }
   },
   _get(k, fb) { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } },
-  _set(k, v) { localStorage.setItem(k, JSON.stringify(v)); },
+  _set(k, v) { localStorage.setItem(k, JSON.stringify(v)); if (typeof FB !== 'undefined' && FB.ready) FB.push(k, JSON.parse(JSON.stringify(v))); },
 
   // ============================================================
   // RECIPE / AVAILABILITY ENGINE
@@ -326,3 +326,6 @@ const Storage = {
 };
 
 Storage.init();
+
+// Start Firebase sync (non-blocking — falls back to localStorage if unavailable)
+if (typeof FB !== 'undefined') FB.init();

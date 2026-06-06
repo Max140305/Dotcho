@@ -2,7 +2,7 @@
 // Adds: payment status, recipe-driven availability engine, manual inventory
 // adjustment, stock ledger, owner notifications, tri-state menu override.
 
-if (!Storage.isAuthenticated()) window.location.replace('/admin/login');
+if (!Storage.isAuthenticated()) window.location.replace('login.html');
 
 const $ = id => document.getElementById(id);
 const rupiah = n => 'Rp' + (n || 0).toLocaleString('id-ID');
@@ -28,7 +28,7 @@ document.querySelectorAll('.sidebar-link').forEach(link => link.addEventListener
 
 $('user-name').textContent = Storage.getUser() || 'biru';
 $('dashboard-date').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-$('logout-btn').addEventListener('click', () => { Storage.logout(); window.location.href = '/admin/login'; });
+$('logout-btn').addEventListener('click', () => { Storage.logout(); window.location.href = 'login.html'; });
 
 // === MODAL ===
 function showModal(title, bodyHtml, footerHtml) {
