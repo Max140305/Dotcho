@@ -934,3 +934,41 @@ input, textarea, select { font-family: inherit; font-size: inherit; }
   /* Demo ribbon smaller */
   .demo-ribbon { font-size: 0.72rem; padding: 0.4rem 1rem; }
 }
+
+/* ============================================================
+   PHASE 4 — Members & Loyalty table
+   ============================================================ */
+.mbr-head, .mbr-row {
+  display:grid; grid-template-columns:1.8fr .8fr .9fr .7fr 1fr 1fr;
+  gap:1rem; align-items:center; padding:.8rem 1.4rem;
+}
+.mbr-head {
+  font-size:.68rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--ink-mute); border-bottom:1px solid var(--border); background:var(--ivory);
+}
+.mbr-row { border-bottom:1px solid var(--cream-light); }
+.mbr-row:last-child { border-bottom:none; }
+.mbr-row:hover { background:var(--cream-light); }
+.mbr-name { font-weight:600; font-size:.88rem; color:var(--maroon-deep); }
+.mbr-phone { font-size:.74rem; color:var(--ink-mute); margin-top:.15rem; }
+.mbr-pts { font-family:'Fraunces',serif; font-weight:600; font-size:.95rem; color:var(--maroon); }
+.mbr-when { font-size:.76rem; color:var(--ink-mute); }
+.mbr-tier {
+  font-size:.66rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+  padding:.26rem .58rem; border-radius:999px; white-space:nowrap;
+}
+.mbr-tier.vip     { background:var(--maroon-deep); color:var(--gold); }
+.mbr-tier.regular { background:var(--maroon); color:var(--cream-light); }
+.mbr-tier.new     { background:#ECECEC; color:#777; }
+
+@media (max-width: 1000px) {
+  .mbr-head { display:none; }
+  .mbr-row {
+    grid-template-columns:1fr auto; gap:.4rem .8rem; padding:.9rem 1.1rem;
+    border-bottom:1px solid var(--border);
+  }
+  .mbr-row > :nth-child(1) { grid-column:1; grid-row:1; }
+  .mbr-row > :nth-child(2) { grid-column:2; grid-row:1; justify-self:end; }
+  .mbr-pts::before  { content:'⭐ '; }
+  .mbr-when::before { content:'Last: '; color:var(--ink-mute); }
+}
