@@ -245,7 +245,7 @@
     render();
     window.addEventListener('langchange', render);
     // Live updates: storage event (cross-tab) + polling fallback
-    window.addEventListener('storage', e => { if (e.key === STORAGE_KEYS.ORDERS) render(); });
+    window.addEventListener('storage', e => { if (e.key === STORAGE_KEYS.ORDERS || e.key === STORAGE_KEYS.MEMBERS) render(); });
     setInterval(() => { if (document.visibilityState === 'visible') render(); }, 3000);
   </script>
 </body>

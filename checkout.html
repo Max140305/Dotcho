@@ -279,6 +279,10 @@
 
     render();
     window.addEventListener('langchange', render);
+    // Re-render if Firebase pulls member or cart data after page load
+    window.addEventListener('storage', e => {
+      if (e.key === STORAGE_KEYS.MEMBERS || e.key === STORAGE_KEYS.CART) render();
+    });
   </script>
 </body>
 </html>

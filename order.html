@@ -40,7 +40,7 @@
 
   <section class="section" style="padding-top: 4rem;">
     <div class="section-inner">
-      <a href="menu.html" style="font-size: 0.88rem; color: var(--text-soft); margin-bottom: 2rem; display: inline-block;">← Back to Menu</a>
+      <a href="menu.html" style="font-size: 0.88rem; color: var(--text-soft); margin-bottom: 2rem; display: inline-block;" data-i18n="ord.backmenu">← Back to Menu</a>
 
       <div class="order-layout" id="order-layout">
         <!-- rendered by JS -->
@@ -51,7 +51,7 @@
   <!-- Related reviews -->
   <section class="section" style="padding-top: 0;">
     <div class="section-inner">
-      <div class="eyebrow">What customers say</div>
+      <div class="eyebrow" data-i18n="ord.whatcust">What customers say</div>
       <h2 class="section-title" style="margin-bottom: 3rem;">Reviews for <em id="review-menu-name">this drink</em></h2>
       <div class="full-reviews-grid" id="item-reviews"></div>
     </div>
@@ -131,19 +131,19 @@
           <div style="font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--maroon-warm); font-weight: 600; margin-bottom: 0.6rem;">${item.category}${item.isHot ? ' · Hot' : ''}</div>
           <h1>${item.name}</h1>
           <div class="order-cat-rating">
-            <div><span class="stars">${starString(item.rating)}</span> ${item.rating.toFixed(1)} · ${item.reviewCount} reviews</div>
+            <div><span class="stars">${starString(item.rating)}</span> ${item.rating.toFixed(1)} · ${item.reviewCount} ${t('card.reviews')}</div>
           </div>
           <p class="order-notes">"${item.notes}"</p>
 
           <div class="order-price-display" id="total-display">${rupiah(item.price)}</div>
           ${availHint}
 
-          ${renderOptionGroup('Sugar Level', ADDONS.sugarLevel, 'sugarLevel')}
-          ${renderOptionGroup('Extra Foam', ADDONS.extraFoam, 'extraFoam')}
-          ${renderOptionGroup('Dine-in / Takeaway', ADDONS.takeaway, 'takeaway')}
+          ${renderOptionGroup(t('opt.sugargrp'), ADDONS.sugarLevel, 'sugarLevel')}
+          ${renderOptionGroup(t('opt.foamgrp'), ADDONS.extraFoam, 'extraFoam')}
+          ${renderOptionGroup(t('opt.takeawaygrp'), ADDONS.takeaway, 'takeaway')}
 
           <div class="option-group">
-            <div class="option-label">Add a note <span style="text-transform: none; letter-spacing: normal; font-weight: 400; color: var(--text-soft); font-size: 0.78rem;">(optional)</span></div>
+            <div class="option-label">${t('opt.notelbl')} <span style="text-transform: none; letter-spacing: normal; font-weight: 400; color: var(--text-soft); font-size: 0.78rem;">${t('opt.optional')}</span></div>
             <textarea class="note-input" placeholder="Catatan untuk barista — e.g., 'less ice please'" id="order-note"></textarea>
           </div>
 
@@ -153,9 +153,9 @@
               <div class="qty-num" id="qty-num">1</div>
               <button class="qty-btn" onclick="changeQty(1)">+</button>
             </div>
-            <button class="add-cart-btn ghost" onclick="addToCartFromOrder(false)" ${ctaDisabled}>Add to Cart</button>
+            <button class="add-cart-btn ghost" onclick="addToCartFromOrder(false)" ${ctaDisabled}>${t('btn.addcart')}</button>
             <button class="add-cart-btn" onclick="orderNow()" ${ctaDisabled}>
-              Order Now · <span id="cart-total">${rupiah(item.price)}</span>
+              ${t('btn.ordernow')} · <span id="cart-total">${rupiah(item.price)}</span>
             </button>
           </div>
         </div>
@@ -166,7 +166,7 @@
     }
 
     function renderOptionGroup(label, addonGroup, stateKey) {
-      const required = addonGroup.required ? '<span class="option-required">Required</span>' : '';
+      const required = addonGroup.required ? `<span class="option-required">${t('opt.required')}</span>` : '';
       return `
         <div class="option-group">
           <div class="option-label">${label} ${required}</div>
@@ -174,7 +174,7 @@
             ${addonGroup.options.map(opt => `
               <button class="option-pill ${state[stateKey] === opt.id ? 'selected' : ''}"
                 data-key="${stateKey}" data-val="${opt.id}">
-                ${opt.label}${opt.price > 0 ? ` <span class="price-add">+${rupiah(opt.price)}</span>` : ''}
+                ${t('opt.'+opt.id)||opt.label}${opt.price > 0 ? ` <span class="price-add">+${rupiah(opt.price)}</span>` : ''}
               </button>
             `).join('')}
           </div>
@@ -249,6 +249,7 @@
 
     renderOrderPage();
     renderItemReviews();
+    window.addEventListener('langchange', () => { renderOrderPage(); renderItemReviews(); });
   </script>
 </body>
 </html>

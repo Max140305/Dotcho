@@ -40,28 +40,28 @@
 
   <section class="section" style="padding-top: 5rem;">
     <div class="section-inner">
-      <div class="eyebrow">Customer Voices</div>
-      <h1 class="section-title">Honest <em>words,</em><br>from honest <em>tongues.</em></h1>
-      <p class="section-desc">
+      <div class="eyebrow" data-i18n="rev.eye">Customer Voices</div>
+      <h1 class="section-title" data-i18n="rev.h1">Honest <em>words,</em><br>from honest <em>tongues.</em></h1>
+      <p class="section-desc" data-i18n="rev.desc">
         Every review is verified — left by someone who actually ordered. We don't filter, we don't censor. The good, the great, the constructive — all here.
       </p>
 
       <div class="reviews-stats">
         <div>
           <div class="rstat-num">4.7★</div>
-          <div class="rstat-lbl">Average Rating</div>
+          <div class="rstat-lbl" data-i18n="rev.stat.rating">Average Rating</div>
         </div>
         <div>
           <div class="rstat-num">867</div>
-          <div class="rstat-lbl">Total Reviews</div>
+          <div class="rstat-lbl" data-i18n="rev.stat.total">Total Reviews</div>
         </div>
         <div>
           <div class="rstat-num">94%</div>
-          <div class="rstat-lbl">5-Star Reviews</div>
+          <div class="rstat-lbl" data-i18n="rev.stat.five">5-Star Reviews</div>
         </div>
         <div>
           <div class="rstat-num">96%</div>
-          <div class="rstat-lbl">Would Reorder</div>
+          <div class="rstat-lbl" data-i18n="rev.stat.reorder">Would Reorder</div>
         </div>
       </div>
 
@@ -102,5 +102,6 @@
   <script src="js/storage.js"></script>
   <script src="js/main.js"></script>
   <script src="js/i18n.js"></script>
+  <script>window.addEventListener('langchange', () => { if(typeof mountAllReviews!=='undefined'){ mountAllReviews(); mountReviewsPreview(); } });</script>
 </body>
 </html>
