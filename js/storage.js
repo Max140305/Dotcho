@@ -15,6 +15,18 @@ const STORAGE_KEYS = {
   LEDGER:      'dotcho_ledger',
   STORE_STATUS: 'dotcho_store_status',
   OVERRIDE_SEED: 'dotcho_override_seeded',
+  MEMBERS:      'dotcho_members', // Phase 4: loyalty member registry {phone: {...}}
+};
+
+// Phase 4 — loyalty config
+const LOYALTY = {
+  EARN_PER_RUPIAH: 1000,   // 1 point per Rp1.000 spent (on paid orders)
+  REDEEM_VALUE: 10,        // each point redeems for Rp10 (100 pts = Rp1.000)
+  TIERS: [                 // evaluated top-down on lifetime points
+    { id: 'vip',     name: 'VIP',     min: 2000 },
+    { id: 'regular', name: 'Regular', min: 500 },
+    { id: 'new',     name: 'New',     min: 0 },
+  ],
 };
 
 const LOW_STOCK_CUPS = 8; // show "low — N left" on customer site at/under this
@@ -55,13 +67,26 @@ const Storage = {
     set(STORAGE_KEYS.CART, []);
     set(STORAGE_KEYS.NOTIFS, []);
     set(STORAGE_KEYS.LEDGER, []);
+    set(STORAGE_KEYS.MEMBERS, {});
     // Seed a couple of demo overrides once (Choco Yuzu manually disabled)
     if (!localStorage.getItem(STORAGE_KEYS.OVERRIDE_SEED)) {
       this.setOverride('choco-yuzu', 'off');
       localStorage.setItem(STORAGE_KEYS.OVERRIDE_SEED, '1');
     }
   },
-  _get(k, fb) { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } },
+  _get(k, fb) {
+    try {
+      const v = JSON.parse(localStorage.getItem(k)) ?? fb;
+      // Firebase Realtime DB serializes arrays as objects ({0:..,1:..}) and
+      // returns a plain object whenever keys aren't a contiguous 0..n run.
+      // If we expected an array (fallback is an array) but got an object,
+      // coerce it back so every .filter/.map/.slice/.find call stays safe.
+      if (Array.isArray(fb) && v && typeof v === 'object' && !Array.isArray(v)) {
+        return Object.values(v);
+      }
+      return v;
+    } catch { return fb; }
+  },
   _set(k, v) { localStorage.setItem(k, JSON.stringify(v)); if (typeof FB !== 'undefined' && FB.ready) FB.push(k, JSON.parse(JSON.stringify(v))); },
 
   // ============================================================
@@ -151,16 +176,27 @@ const Storage = {
   getOrders() { return this._get(STORAGE_KEYS.ORDERS, []); },
   getOrder(id) { return this.getOrders().find(o => o.id === id); },
 
-  placeOrder({ customer, items, payment }) {
+  placeOrder({ customer, items, payment, pointsToRedeem }) {
     const orders = this.getOrders();
     const subtotal = items.reduce((s, l) => s + l.lineTotal, 0);
+    // Loyalty redemption (returning members only): cap by balance & subtotal.
+    const phone = this.normalizePhone(customer?.phone);
+    const member = phone ? this.getMember(phone) : null;
+    let redeem = Math.max(0, Math.floor(pointsToRedeem || 0));
+    if (member) redeem = Math.min(redeem, member.points);
+    else redeem = 0;
+    const maxRedeemByCart = Math.floor(subtotal / LOYALTY.REDEEM_VALUE);
+    redeem = Math.min(redeem, maxRedeemByCart);
+    const discount = redeem * LOYALTY.REDEEM_VALUE;
+    const total = Math.max(0, subtotal - discount);
     const order = {
       id: 'ORD-' + String(Date.now()).slice(-6),
       timestamp: new Date().toISOString(),
       status: 'new',                  // new → progress → done | cancelled
       customer: customer || { name: 'Guest' },
-      items, subtotal, fees: 0, total: subtotal,
+      items, subtotal, fees: 0, discount, pointsRedeemed: redeem, total,
       payment: { method: payment.method, status: payment.status }, // paid|unpaid
+      pointsAwarded: false,
     };
     orders.unshift(order);
     this._set(STORAGE_KEYS.ORDERS, orders);
@@ -176,6 +212,7 @@ const Storage = {
     });
     if (order.payment.status === 'paid') {
       this.addNotif({ type: 'payment', icon: '💳', title: `Payment received`, body: `${this._rupiah(order.total)} via ${order.payment.method.toUpperCase()} · ${order.id}` });
+      this.awardPointsForOrder(order);
     }
     return order;
   },
@@ -195,6 +232,7 @@ const Storage = {
       o.payment.status = 'paid';
       this._set(STORAGE_KEYS.ORDERS, orders);
       this.addNotif({ type: 'payment', icon: '💳', title: 'Payment received', body: `${this._rupiah(o.total)} · ${o.id} (counter)` });
+      this.awardPointsForOrder(o);
     }
   },
 
@@ -331,6 +369,8 @@ const Storage = {
     this._set(STORAGE_KEYS.ORDERS, orders);
     // Restore inventory (reverse the deduction)
     this._restoreForOrder(o);
+    // Reverse any loyalty points already granted for this order
+    this.reversePointsForOrder(o);
     this.addNotif({ type: 'order', icon: '❌', title: `Order dibatalkan`, body: `${o.id} · ${o.customer?.name || 'Guest'}` });
     return true;
   },
@@ -377,6 +417,163 @@ const Storage = {
     } else {
       this.init();
     }
+  },
+
+  // ============================================================
+  // PHASE 4 — LOYALTY / MEMBERS
+  // ============================================================
+  normalizePhone(p) {
+    if (!p) return '';
+    let d = String(p).replace(/[^\d]/g, '');
+    if (d.startsWith('62')) d = '0' + d.slice(2);     // +62 / 62 → 0
+    if (d && !d.startsWith('0')) d = '0' + d;          // 8xx → 08xx
+    return d.length >= 8 ? d : '';                     // ignore junk
+  },
+  getMembers() { return this._get(STORAGE_KEYS.MEMBERS, {}); },
+  _saveMembers(m) { this._set(STORAGE_KEYS.MEMBERS, m); },
+  getMember(phone) {
+    const k = this.normalizePhone(phone);
+    return k ? (this.getMembers()[k] || null) : null;
+  },
+  memberTier(points) {
+    return (LOYALTY.TIERS.find(t => points >= t.min) || LOYALTY.TIERS[LOYALTY.TIERS.length - 1]);
+  },
+  // Create/update a member from a paid order. Idempotent via order.pointsAwarded.
+  awardPointsForOrder(order) {
+    if (!order || order.pointsAwarded || order.payment?.status !== 'paid') return null;
+    const phone = this.normalizePhone(order.customer?.phone);
+    if (!phone) return null; // guest checkout — no loyalty identity
+    const members = this.getMembers();
+    const now = new Date().toISOString();
+    const m = members[phone] || {
+      phone, name: order.customer?.name || 'Member',
+      points: 0, lifetimePoints: 0, totalSpent: 0, orderCount: 0,
+      tier: 'new', joinedAt: now, lastOrderAt: now,
+    };
+    const earned = Math.floor((order.total || 0) / LOYALTY.EARN_PER_RUPIAH);
+    const redeemed = Math.max(0, order.pointsRedeemed || 0);
+    m.points = Math.max(0, m.points - redeemed + earned);
+    m.lifetimePoints = (m.lifetimePoints || 0) + earned;
+    m.totalSpent = (m.totalSpent || 0) + (order.total || 0);
+    m.orderCount = (m.orderCount || 0) + 1;
+    m.lastOrderAt = now;
+    if (order.customer?.name) m.name = order.customer.name;
+    m.tier = this.memberTier(m.lifetimePoints).id;
+    members[phone] = m;
+    this._saveMembers(members);
+    order.pointsAwarded = true;
+    order.pointsEarned = earned;
+    // persist the flag on the order
+    const orders = this.getOrders();
+    const idx = orders.findIndex(o => o.id === order.id);
+    if (idx >= 0) { orders[idx].pointsAwarded = true; orders[idx].pointsEarned = earned; this._set(STORAGE_KEYS.ORDERS, orders); }
+    this.addNotif({ type: 'loyalty', icon: '⭐', title: `+${earned} poin · ${m.name}`, body: `Saldo ${m.points} poin · tier ${this.memberTier(m.lifetimePoints).name}` });
+    return { member: m, earned, tier: this.memberTier(m.lifetimePoints) };
+  },
+  // Reverse points if a previously-awarded order gets cancelled.
+  reversePointsForOrder(order) {
+    if (!order || !order.pointsAwarded) return;
+    const phone = this.normalizePhone(order.customer?.phone);
+    if (!phone) return;
+    const members = this.getMembers();
+    const m = members[phone];
+    if (!m) return;
+    const earned = order.pointsEarned || 0;
+    const redeemed = order.pointsRedeemed || 0;
+    m.points = Math.max(0, m.points - earned + redeemed); // undo earn, refund redeemed
+    m.lifetimePoints = Math.max(0, (m.lifetimePoints || 0) - earned);
+    m.totalSpent = Math.max(0, (m.totalSpent || 0) - (order.total || 0));
+    m.orderCount = Math.max(0, (m.orderCount || 0) - 1);
+    m.tier = this.memberTier(m.lifetimePoints).id;
+    members[phone] = m;
+    this._saveMembers(members);
+    order.pointsAwarded = false;
+  },
+  membersList() {
+    return Object.values(this.getMembers()).sort((a, b) => (b.points || 0) - (a.points || 0));
+  },
+  memberStats() {
+    const list = this.membersList();
+    const byTier = { vip: 0, regular: 0, new: 0 };
+    let pts = 0;
+    list.forEach(m => { byTier[m.tier] = (byTier[m.tier] || 0) + 1; pts += m.points || 0; });
+    return { total: list.length, byTier, totalPoints: pts, avgPoints: list.length ? Math.round(pts / list.length) : 0 };
+  },
+
+  // ============================================================
+  // PHASE 4 — ANALYTICS (computed from live orders/reviews/members)
+  // ============================================================
+  analytics() {
+    const orders = this.getOrders();
+    const active = orders.filter(o => o.status !== 'cancelled');
+    const paid = active.filter(o => o.payment?.status === 'paid');
+    const revenue = paid.reduce((s, o) => s + (o.total || 0), 0);
+    const aov = paid.length ? Math.round(revenue / paid.length) : 0;
+    const status = { new: 0, progress: 0, done: 0, cancelled: 0 };
+    orders.forEach(o => { status[o.status] = (status[o.status] || 0) + 1; });
+    const payment = {};
+    paid.forEach(o => { const k = (o.payment?.method || 'other'); payment[k] = (payment[k] || 0) + 1; });
+    // revenue last 7 days
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0, 0, 0, 0);
+      const key = d.toISOString().slice(0, 10);
+      const label = d.toLocaleDateString('id-ID', { weekday: 'short' });
+      const rev = paid.filter(o => (o.timestamp || '').slice(0, 10) === key).reduce((s, o) => s + (o.total || 0), 0);
+      days.push({ key, label, revenue: rev });
+    }
+    // top items by qty
+    const tally = {};
+    active.forEach(o => (o.items || []).forEach(l => {
+      const id = l.itemId || l.name;
+      if (!tally[id]) tally[id] = { name: l.name, qty: 0, revenue: 0 };
+      tally[id].qty += l.qty || 0;
+      tally[id].revenue += (l.lineTotal || (l.unitPrice || 0) * (l.qty || 0));
+    }));
+    const topItems = Object.values(tally).sort((a, b) => b.qty - a.qty).slice(0, 6);
+    const ms = this.memberStats();
+    return {
+      revenue, orders: active.length, paidOrders: paid.length, aov,
+      status, payment, days, topItems,
+      members: ms.total, pointsIssued: ms.totalPoints,
+    };
+  },
+
+  // ============================================================
+  // PHASE 4 — CSV EXPORT
+  // ============================================================
+  _csv(rows) {
+    return rows.map(r => r.map(c => {
+      const s = (c === null || c === undefined) ? '' : String(c);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(',')).join('\r\n');
+  },
+  exportOrdersCSV() {
+    const rows = [['Order ID', 'Date', 'Customer', 'Phone', 'Items', 'Status', 'Payment', 'Method', 'Subtotal', 'Discount', 'Total', 'Points Earned']];
+    this.getOrders().forEach(o => {
+      const items = (o.items || []).map(l => `${l.qty}x ${l.name}`).join('; ');
+      rows.push([o.id, o.timestamp, o.customer?.name || '', o.customer?.phone || '', items, o.status,
+        o.payment?.status || '', o.payment?.method || '', o.subtotal ?? o.total, o.discount || 0, o.total, o.pointsEarned || 0]);
+    });
+    return this._csv(rows);
+  },
+  exportMembersCSV() {
+    const rows = [['Phone', 'Name', 'Tier', 'Points', 'Lifetime Points', 'Orders', 'Total Spent', 'Joined', 'Last Order']];
+    this.membersList().forEach(m => rows.push([m.phone, m.name, this.memberTier(m.lifetimePoints).name,
+      m.points, m.lifetimePoints || 0, m.orderCount || 0, m.totalSpent || 0, m.joinedAt || '', m.lastOrderAt || '']));
+    return this._csv(rows);
+  },
+  exportSalesReportCSV() {
+    const a = this.analytics();
+    const rows = [['.Cho Sales Report', new Date().toISOString()], [],
+      ['Metric', 'Value'],
+      ['Total Revenue (paid)', a.revenue], ['Paid Orders', a.paidOrders], ['Active Orders', a.orders],
+      ['Avg Order Value', a.aov], ['Members', a.members], ['Points Issued', a.pointsIssued], [],
+      ['Revenue — last 7 days', ''], ...a.days.map(d => [d.key, d.revenue]), [],
+      ['Top Items (by qty)', ''], ...a.topItems.map(t => [t.name, t.qty]), [],
+      ['Order Status', ''], ...Object.entries(a.status).map(([k, v]) => [k, v]), [],
+      ['Payment Method', ''], ...Object.entries(a.payment).map(([k, v]) => [k, v])];
+    return this._csv(rows);
   },
 
   _rupiah(n) { return 'Rp' + (n || 0).toLocaleString('id-ID'); },

@@ -4,6 +4,9 @@
 
 function rupiah(n) { return 'Rp' + (n || 0).toLocaleString('id-ID'); }
 
+// i18n helper — safe even if i18n.js hasn't initialized yet.
+function t(key) { return (typeof i18n !== 'undefined') ? i18n.t(key) : key; }
+
 function starString(rating) {
   const full = Math.floor(rating);
   const half = rating - full >= 0.5;
@@ -12,16 +15,16 @@ function starString(rating) {
 
 // ---------- MENU CARD (availability-aware) ----------
 function availabilityBadge(item) {
-  if (item.availSource === 'disabled' || (!item.available && !item.forced)) return `<div class="badge-habis">Habis</div>`;
+  if (item.availSource === 'disabled' || (!item.available && !item.forced)) return `<div class="badge-habis">${t('card.sold')}</div>`;
   if (item.makeable !== undefined && item.makeable <= 8 && item.makeable > 0 && !item.forced)
-    return `<div class="badge-low">Only ${item.makeable} left</div>`;
+    return `<div class="badge-low">${t('card.only')} ${item.makeable} ${t('card.left')}</div>`;
   return '';
 }
 
 function renderMenuCard(item) {
   const lovedBadge = item.mostLoved
-    ? `<div class="badge-loved most">♥ Most Loved</div>`
-    : item.loved ? `<div class="badge-loved">♥ Customer Loved</div>` : '';
+    ? `<div class="badge-loved most">${t('card.mostloved')}</div>`
+    : item.loved ? `<div class="badge-loved">${t('card.loved')}</div>` : '';
   const availBadge = availabilityBadge(item);
   const sold = !item.available;
   return `
@@ -38,12 +41,12 @@ function renderMenuCard(item) {
         <div class="menu-rating">
           <span class="stars">${starString(item.rating)}</span>
           <span>${item.rating.toFixed(1)}</span>
-          <span class="review-count">(${item.reviewCount} reviews)</span>
+          <span class="review-count">(${item.reviewCount} ${t('card.reviews')})</span>
         </div>
         <div class="menu-foot">
           <div class="menu-price">${rupiah(item.price)}</div>
           <button class="menu-add" ${sold ? 'disabled' : ''} onclick="event.preventDefault(); event.stopPropagation(); window.location.href='order.html?item=${item.id}'">
-            ${sold ? 'Habis' : 'Order'}
+            ${sold ? t('card.sold') : t('card.order')}
           </button>
         </div>
       </div>
@@ -117,7 +120,7 @@ function injectCartUI() {
     <div class="cart-scrim" id="cart-scrim" onclick="closeCart()"></div>
     <aside class="cart-drawer" id="cart-drawer" aria-label="Your cart">
       <div class="cart-head">
-        <div><div class="cart-title">Your Cart</div><div class="cart-sub" id="cart-line-count"></div></div>
+        <div><div class="cart-title">${t('cart.title')}</div><div class="cart-sub" id="cart-line-count"></div></div>
         <button class="cart-x" onclick="closeCart()" aria-label="Close">×</button>
       </div>
       <div class="cart-lines" id="cart-lines"></div>
@@ -141,9 +144,9 @@ function renderCartDrawer() {
   const lines = document.getElementById('cart-lines');
   const foot = document.getElementById('cart-foot');
   const lc = document.getElementById('cart-line-count');
-  if (lc) lc.textContent = cart.length === 0 ? 'Empty for now' : `${Storage.cartCount()} item · ${cart.length} line${cart.length > 1 ? 's' : ''}`;
+  if (lc) lc.textContent = cart.length === 0 ? t('cart.empty') : `${Storage.cartCount()} item · ${cart.length} line${cart.length > 1 ? 's' : ''}`;
   if (cart.length === 0) {
-    lines.innerHTML = `<div class="cart-empty"><div class="cart-empty-cup">☕</div><p>Keranjang masih kosong.<br>Yuk pilih cokelat favoritmu.</p><a href="menu.html" class="btn-cream" onclick="closeCart()">Browse Menu</a></div>`;
+    lines.innerHTML = `<div class="cart-empty"><div class="cart-empty-cup">☕</div><p>${t('cart.empty.msg')}</p><a href="menu.html" class="btn-cream" onclick="closeCart()">${t('cart.browse')}</a></div>`;
     foot.innerHTML = '';
     return;
   }
@@ -159,21 +162,21 @@ function renderCartDrawer() {
         <div class="cart-line-cup" data-img="${l.image || ''}"></div>
         <div class="cart-line-main">
           <div class="cart-line-name">${l.name}</div>
-          <div class="cart-line-cfg">${cfg.join(' · ') || 'No customization'}</div>
+          <div class="cart-line-cfg">${cfg.join(' · ') || t('cart.nocustom')}</div>
           <div class="cart-qty">
             <button onclick="cartQty('${key}', ${l.qty - 1})">−</button>
             <span>${l.qty}</span>
             <button onclick="cartQty('${key}', ${l.qty + 1})">+</button>
-            <button class="cart-rm" onclick="cartQty('${key}', 0)">Remove</button>
+            <button class="cart-rm" onclick="cartQty('${key}', 0)">${t('cart.remove')}</button>
           </div>
         </div>
         <div class="cart-line-price">${rupiah(l.lineTotal)}</div>
       </div>`;
   }).join('');
   foot.innerHTML = `
-    <div class="cart-subtotal"><span>Subtotal</span><strong>${rupiah(Storage.cartSubtotal())}</strong></div>
-    <p class="cart-note">Pajak & biaya dihitung di checkout.</p>
-    <a href="checkout.html" class="btn-maroon-full">Checkout · ${rupiah(Storage.cartSubtotal())}</a>`;
+    <div class="cart-subtotal"><span>${t('cart.subtotal')}</span><strong>${rupiah(Storage.cartSubtotal())}</strong></div>
+    <p class="cart-note">${t('cart.taxnote')}</p>
+    <a href="checkout.html" class="btn-maroon-full">${t('cart.checkout')} · ${rupiah(Storage.cartSubtotal())}</a>`;
 }
 
 function openCart() { renderCartDrawer(); document.getElementById('cart-drawer')?.classList.add('open'); document.getElementById('cart-scrim')?.classList.add('show'); }
@@ -183,7 +186,7 @@ function cartQty(key, qty) { Storage.setCartQty(key, qty); renderCartDrawer(); u
 function addToCart(line, { open = true } = {}) {
   Storage.addToCart(line);
   updateCartBadges();
-  toast(`Added ${line.name} to cart`, 'success');
+  toast(`${line.name} ${t('cart.added')}`, 'success');
   if (open) openCart();
 }
 
@@ -221,18 +224,16 @@ function checkStoreStatus() {
   const open = Storage.isStoreOpen();
   const banner = document.getElementById('store-closed-banner');
   if (banner) banner.style.display = open ? 'none' : 'block';
-  // Disable all Order/Add to cart buttons when closed
-  if (!open) {
-    document.querySelectorAll('.menu-add, .add-cart-btn, .order-now-btn, .pay-cta, .btn-maroon-full').forEach(btn => {
-      btn.disabled = true;
-      btn.style.opacity = '0.4';
-      btn.title = 'Toko sedang tutup';
-    });
-    document.querySelectorAll('.menu-card').forEach(card => {
-      card.style.pointerEvents = 'none';
-      card.style.opacity = '0.6';
-    });
-  }
+  // Toggle ordering UI both ways so reopening unfreezes the page live.
+  document.querySelectorAll('.menu-add, .add-cart-btn, .order-now-btn, .pay-cta, .btn-maroon-full').forEach(btn => {
+    btn.disabled = !open;
+    btn.style.opacity = open ? '' : '0.4';
+    btn.title = open ? '' : (typeof i18n !== 'undefined' ? i18n.t('store.closed') : 'Toko sedang tutup');
+  });
+  document.querySelectorAll('.menu-card').forEach(card => {
+    card.style.pointerEvents = open ? '' : 'none';
+    card.style.opacity = open ? '' : '0.6';
+  });
 }
 
 // ---------- init ----------
@@ -248,9 +249,17 @@ document.addEventListener('DOMContentLoaded', () => {
   if (sortSelect) sortSelect.addEventListener('change', renderFilteredMenu);
 });
 
+// ---------- language toggle: redraw JS-rendered content ----------
+window.addEventListener('langchange', () => {
+  mountFeaturedMenu();
+  mountAllMenu();
+  if (document.getElementById('cart-drawer')?.classList.contains('open')) renderCartDrawer();
+  checkStoreStatus();
+});
+
 // ---------- cross-tab sync ----------
 window.addEventListener('storage', (e) => {
   if (e.key === STORAGE_KEYS.STORE_STATUS) { checkStoreStatus(); }
-  if (e.key === STORAGE_KEYS.MENU_AVAIL || e.key === STORAGE_KEYS.INVENTORY) { mountFeaturedMenu(); mountAllMenu(); }
+  if (e.key === STORAGE_KEYS.MENU_AVAIL || e.key === STORAGE_KEYS.INVENTORY) { mountFeaturedMenu(); mountAllMenu(); checkStoreStatus(); }
   if (e.key === STORAGE_KEYS.CART) { updateCartBadges(); if (document.getElementById('cart-drawer')?.classList.contains('open')) renderCartDrawer(); }
 });

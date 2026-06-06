@@ -96,6 +96,7 @@ function renderNotifs() {
 // DASHBOARD
 // ============================================================
 function renderDashboard() {
+  renderStoreToggle(); // restore the open/close toggle at top of dashboard
   const orders = Storage.getOrders();
   const todayOrders = orders.filter(o => isToday(o.timestamp) && o.status !== 'cancelled');
   const paidRevenue = todayOrders.filter(o => o.payment?.status === 'paid').reduce((s, o) => s + o.total, 0);
@@ -433,14 +434,18 @@ function renderReviewsView() {
     <div class="segment-row"><div class="segment-label">${d.s}★</div>
     <div class="segment-track"><div class="segment-fill" style="width:${(d.count / maxCount * 100) || 0}%">${d.count}</div></div></div>`).join('')}</div>`;
 
-  $('customer-segment').innerHTML = `
-    <div class="segment-bar">
-      <div class="segment-row"><div class="segment-label">VIP</div><div class="segment-track"><div class="segment-fill" style="width:18%;background:var(--maroon-deep);">23</div></div></div>
-      <div class="segment-row"><div class="segment-label">Regular</div><div class="segment-track"><div class="segment-fill" style="width:42%;background:var(--maroon);">87</div></div></div>
-      <div class="segment-row"><div class="segment-label">New</div><div class="segment-track"><div class="segment-fill" style="width:100%;background:var(--gold);color:var(--maroon-deep);">203</div></div></div>
-    </div>
-    <div style="margin-top:1rem;padding:.8rem 1rem;background:var(--cream-light);border-radius:6px;font-size:.8rem;color:var(--ink-soft);border-left:3px solid var(--gold);">
-      Illustrative — activates with customer accounts in Phase 2.</div>`;
+  const ms = Storage.memberStats();
+  const segMax = Math.max(1, ms.byTier.vip || 0, ms.byTier.regular || 0, ms.byTier.new || 0);
+  const segRow = (label, count, color) => `<div class="segment-row"><div class="segment-label">${label}</div><div class="segment-track"><div class="segment-fill" style="width:${Math.max(2, (count / segMax) * 100)}%;background:${color};${color === 'var(--gold)' ? 'color:var(--maroon-deep);' : ''}">${count}</div></div></div>`;
+  $('customer-segment').innerHTML = ms.total === 0
+    ? `<div class="empty-state"><div class="icon">🪪</div><div>No members yet. Members are created when customers pay with their WhatsApp number — see the Members &amp; Loyalty tab.</div></div>`
+    : `<div class="segment-bar">
+        ${segRow('VIP', ms.byTier.vip || 0, 'var(--maroon-deep)')}
+        ${segRow('Regular', ms.byTier.regular || 0, 'var(--maroon)')}
+        ${segRow('New', ms.byTier.new || 0, 'var(--gold)')}
+      </div>
+      <div style="margin-top:1rem;padding:.8rem 1rem;background:var(--cream-light);border-radius:6px;font-size:.8rem;color:var(--ink-soft);border-left:3px solid var(--gold);">
+        ${ms.total} member${ms.total !== 1 ? 's' : ''} · ${ms.totalPoints.toLocaleString('id-ID')} points outstanding. Full registry in the Members &amp; Loyalty tab.</div>`;
 }
 
 
@@ -479,6 +484,85 @@ function toggleStore() {
   renderNotifs();
 }
 
+// ============================================================
+// PHASE 4 — MEMBERS & LOYALTY
+// ============================================================
+const TIER_LABEL = { vip: 'VIP', regular: 'Regular', new: 'New' };
+function renderMembers() {
+  const s = Storage.memberStats();
+  const list = Storage.membersList();
+  $('badge-members').textContent = s.total;
+  $('member-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Total Members</div><div class="stat-num">${s.total}</div><div class="stat-delta">Loyalty registry</div></div>
+    <div class="stat-card"><div class="stat-label">VIP</div><div class="stat-num" style="color:var(--maroon-deep)">${s.byTier.vip || 0}</div><div class="stat-delta">≥2000 lifetime pts</div></div>
+    <div class="stat-card"><div class="stat-label">Regular</div><div class="stat-num">${s.byTier.regular || 0}</div><div class="stat-delta">≥500 lifetime pts</div></div>
+    <div class="stat-card"><div class="stat-label">Points Outstanding</div><div class="stat-num">${s.totalPoints.toLocaleString('id-ID')}</div><div class="stat-delta">avg ${s.avgPoints}/member</div></div>`;
+  $('members-list').innerHTML = list.length === 0
+    ? `<div class="empty-state"><div class="icon">🪪</div><div>No members yet. A member is created automatically when a customer pays with their WhatsApp number.</div></div>`
+    : `<div class="mbr-head"><span>Member</span><span>Tier</span><span>Points</span><span>Orders</span><span>Spent</span><span>Last order</span></div>` +
+      list.map(m => {
+        const tier = (m.tier || 'new');
+        return `<div class="mbr-row">
+          <div><div class="mbr-name">${m.name}</div><div class="mbr-phone">${m.phone}</div></div>
+          <div><span class="mbr-tier ${tier}">${TIER_LABEL[tier] || tier}</span></div>
+          <div class="mbr-pts">${(m.points || 0).toLocaleString('id-ID')}</div>
+          <div>${m.orderCount || 0}</div>
+          <div>${rupiah(m.totalSpent || 0)}</div>
+          <div class="mbr-when">${m.lastOrderAt ? timeAgo(m.lastOrderAt) : '—'}</div>
+        </div>`;
+      }).join('');
+}
+
+// ============================================================
+// PHASE 4 — ANALYTICS & REPORTS
+// ============================================================
+function segBars(items, opts = {}) {
+  const max = Math.max(1, ...items.map(i => i.value));
+  if (items.every(i => i.value === 0) && opts.emptyMsg) {
+    return `<div class="empty-state"><div class="icon">📊</div><div>${opts.emptyMsg}</div></div>`;
+  }
+  return `<div class="segment-bar">${items.map(i => `
+    <div class="segment-row">
+      <div class="segment-label">${i.label}</div>
+      <div class="segment-track"><div class="segment-fill" style="width:${Math.max(2, i.value / max * 100)}%;${i.color ? 'background:' + i.color + ';' : ''}">${i.display ?? i.value}</div></div>
+    </div>`).join('')}</div>`;
+}
+function renderAnalytics() {
+  const a = Storage.analytics();
+  $('analytics-kpis').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Revenue (paid)</div><div class="stat-num">${rupiah(a.revenue)}</div><div class="stat-delta">${a.paidOrders} paid order${a.paidOrders !== 1 ? 's' : ''}</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Order Value</div><div class="stat-num">${rupiah(a.aov)}</div><div class="stat-delta">per paid order</div></div>
+    <div class="stat-card"><div class="stat-label">Members</div><div class="stat-num">${a.members}</div><div class="stat-delta">loyalty registry</div></div>
+    <div class="stat-card"><div class="stat-label">Points Issued</div><div class="stat-num">${a.pointsIssued.toLocaleString('id-ID')}</div><div class="stat-delta">outstanding balance</div></div>`;
+  $('chart-revenue').innerHTML = segBars(
+    a.days.map(d => ({ label: d.label, value: d.revenue, display: d.revenue ? rupiah(d.revenue) : '' })),
+    { emptyMsg: 'No paid revenue in the last 7 days yet.' });
+  $('chart-top').innerHTML = segBars(
+    a.topItems.map(t => ({ label: t.name, value: t.qty, display: t.qty + ' cup' + (t.qty !== 1 ? 's' : '') })),
+    { emptyMsg: 'No items sold yet.' });
+  const statusColors = { new: 'var(--gold)', progress: 'var(--maroon)', done: 'var(--green)', cancelled: 'var(--red)' };
+  $('chart-status').innerHTML = segBars(
+    Object.entries(a.status).map(([k, v]) => ({ label: k, value: v, color: statusColors[k] })));
+  $('chart-payment').innerHTML = segBars(
+    Object.entries(a.payment).map(([k, v]) => ({ label: k.toUpperCase(), value: v })),
+    { emptyMsg: 'No payments recorded yet.' });
+}
+
+// CSV download helper
+function downloadCSV(kind) {
+  let csv, name;
+  if (kind === 'orders') { csv = Storage.exportOrdersCSV(); name = 'dotcho-orders'; }
+  else if (kind === 'members') { csv = Storage.exportMembersCSV(); name = 'dotcho-members'; }
+  else { csv = Storage.exportSalesReportCSV(); name = 'dotcho-sales-report'; }
+  const stamp = new Date().toISOString().slice(0, 10);
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${name}-${stamp}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // === ROUTER ===
 function renderView(view) {
   if (view === 'dashboard') renderDashboard();
@@ -486,11 +570,14 @@ function renderView(view) {
   else if (view === 'inventory') renderInventory();
   else if (view === 'menu') renderMenuMgmt();
   else if (view === 'reviews') renderReviewsView();
+  else if (view === 'members') renderMembers();
+  else if (view === 'analytics') renderAnalytics();
 }
 
 injectNotifBell();
 renderView('dashboard');
 renderOrders();
+renderMembers(); // populate the members badge on load
 
 
 function cancelOrderAdmin(id) {
@@ -504,7 +591,7 @@ function cancelOrderAdmin(id) {
 // === LIVE SYNC ===
 window.addEventListener('storage', (e) => {
   if (Object.values(STORAGE_KEYS).includes(e.key)) {
-    const activeView = document.querySelector('.view.active').id.replace('view-', '');
+    const activeView = (document.querySelector('.view.active')?.id || 'view-dashboard').replace('view-', '');
     renderView(activeView);
     renderOrders();
     renderNotifs();
@@ -512,7 +599,7 @@ window.addEventListener('storage', (e) => {
 });
 setInterval(() => {
   if (document.visibilityState === 'visible') {
-    const activeView = document.querySelector('.view.active').id.replace('view-', '');
+    const activeView = (document.querySelector('.view.active')?.id || 'view-dashboard').replace('view-', '');
     renderView(activeView);
     updateNotifCount();
   }

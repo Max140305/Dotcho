@@ -25,6 +25,7 @@ const SYNC_KEYS = [
   'dotcho_notifs',
   'dotcho_ledger',
   'dotcho_reviews_user',
+  'dotcho_members',
 ];
 
 const FB = {
