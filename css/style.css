@@ -482,7 +482,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .menu-card {
   background: var(--ivory);
   border-radius: var(--r-lg);
-  overflow: hidden;
+  overflow: visible;
   transition: transform 0.3s, box-shadow 0.3s;
   position: relative;
   cursor: pointer;
@@ -505,6 +505,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
 }
 
 /* Themed gradient cup illustration per item */
@@ -599,6 +600,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 
 .menu-body {
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  overflow: hidden;
   padding: 1.4rem 1.4rem 1.6rem;
   display: flex;
   flex-direction: column;
@@ -1438,3 +1441,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .menu-add { min-height: 38px; } /* card buttons can stay tighter */
   .pay-method { padding: 1rem; }
 }
+
+/* ---- leave review form (track page) ---- */
+.review-form-inner .co-field textarea { display:block; }
+#star-row button { transition: opacity .15s, transform .1s; }
+#star-row button:hover { transform: scale(1.2); }
