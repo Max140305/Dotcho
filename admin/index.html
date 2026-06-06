@@ -47,6 +47,13 @@
         <a class="sidebar-link" data-view="reviews">
           <span>Reviews & Customers</span>
         </a>
+        <a class="sidebar-link" data-view="members">
+          <span>Members & Loyalty</span>
+          <span class="sidebar-badge" id="badge-members">0</span>
+        </a>
+        <a class="sidebar-link" data-view="analytics">
+          <span>Analytics & Reports</span>
+        </a>
       </nav>
 
       <div class="sidebar-footer">
@@ -187,11 +194,73 @@
               <div class="panel-header">
                 <div>
                   <div class="panel-title">Customer Segmentation</div>
-                  <div class="panel-sub">Phase 2 — once customer accounts launch</div>
+                  <div class="panel-sub">Live tiers from the loyalty registry</div>
                 </div>
               </div>
               <div class="panel-body" id="customer-segment"></div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== MEMBERS & LOYALTY VIEW ===== -->
+      <section class="view" id="view-members">
+        <div class="view-header">
+          <div>
+            <h1>Members & Loyalty</h1>
+            <div class="subtitle">Earn 1 point / Rp1.000 · 100 points = Rp1.000 · tiers auto-assigned</div>
+          </div>
+          <button class="btn-sm" onclick="downloadCSV('members')">⬇ Export Members CSV</button>
+        </div>
+        <div class="stat-grid" id="member-stats"></div>
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">All Members</div>
+              <div class="panel-sub">Sorted by current point balance · identity = WhatsApp number</div>
+            </div>
+          </div>
+          <div class="panel-body tight" id="members-list"></div>
+        </div>
+      </section>
+
+      <!-- ===== ANALYTICS & REPORTS VIEW ===== -->
+      <section class="view" id="view-analytics">
+        <div class="view-header">
+          <div>
+            <h1>Analytics & Reports</h1>
+            <div class="subtitle">Live business intelligence — computed from real orders</div>
+          </div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+            <button class="btn-sm" onclick="downloadCSV('sales')">⬇ Sales Report</button>
+            <button class="btn-sm" onclick="downloadCSV('orders')">⬇ Orders CSV</button>
+          </div>
+        </div>
+        <div class="stat-grid" id="analytics-kpis"></div>
+        <div class="rev-grid">
+          <div class="panel">
+            <div class="panel-header"><div>
+              <div class="panel-title">Revenue — Last 7 Days</div>
+              <div class="panel-sub">Paid orders only</div>
+            </div></div>
+            <div class="panel-body" id="chart-revenue"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div>
+              <div class="panel-title">Top Sellers</div>
+              <div class="panel-sub">By cups sold</div>
+            </div></div>
+            <div class="panel-body" id="chart-top"></div>
+          </div>
+        </div>
+        <div class="rev-grid">
+          <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">Order Status</div></div></div>
+            <div class="panel-body" id="chart-status"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div><div class="panel-title">Payment Methods</div></div></div>
+            <div class="panel-body" id="chart-payment"></div>
           </div>
         </div>
       </section>
