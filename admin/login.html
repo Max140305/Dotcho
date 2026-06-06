@@ -51,12 +51,16 @@
     </div>
   </div>
 
+  <!-- Firebase SDK (cross-device sync) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <script src="../js/firebase-sync.js"></script>
   <script src="../js/data.js"></script>
   <script src="../js/storage.js"></script>
   <script>
     // Auto-redirect if already logged in
     if (Storage.isAuthenticated()) {
-      window.location.href = '/admin';
+      window.location.href = 'index.html';
     }
 
     const userEl = document.getElementById('user');
@@ -66,7 +70,7 @@
     function attemptLogin() {
       const ok = Storage.login(userEl.value.trim(), passEl.value);
       if (ok) {
-        window.location.href = '/admin';
+        window.location.href = 'index.html';
       } else {
         errorEl.classList.add('show');
         passEl.value = '';

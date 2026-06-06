@@ -7,7 +7,7 @@
   <!-- Fast auth gate: runs before any DOM renders — no flash of admin UI -->
   <script>
     if (!localStorage.getItem('dotcho_admin_auth')) {
-      window.location.replace('/admin/login');
+      window.location.replace('login.html');
     }
   </script>
   <link rel="stylesheet" href="../css/admin.css">
@@ -212,6 +212,10 @@
     </div>
   </div>
 
+  <!-- Firebase SDK (cross-device sync) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <script src="../js/firebase-sync.js"></script>
   <script src="../js/data.js"></script>
   <script src="../js/storage.js"></script>
   <script src="../js/admin.js"></script>
