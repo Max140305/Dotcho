@@ -1,76 +1,120 @@
-# .Cho — Order & Operations System (Prototype)
+# .Cho — Pre-Order & Operations System (Prototype)
 
-Sistem pre-order + operasi untuk **.Cho** (Dot.Cho), kedai cokelat di Kantin FEB UGM.
-Dibangun untuk mata kuliah **AKU3404 — Analisis & Perancangan Sistem**.
+Sistem pre-order + operasi untuk **.Cho**, kedai cokelat di Kantin FEB UGM.
+Dibuat untuk final project **AKU3404 — Analisis & Perancangan Sistem**.
 
-> **Phase 2 — "Replace Opaper".** Bukan lagi sekadar pelengkap: ini alur lengkap
-> *browse → cart → checkout → bayar → tracking*, plus dashboard owner dengan
-> **inventory engine** yang menghitung sendiri ketersediaan menu dari stok bahan.
+Live: **[dotcho.vercel.app](https://dotcho.vercel.app)** · Admin: [dotcho.vercel.app/admin](https://dotcho.vercel.app/admin)
 
 ---
 
-## ✨ Yang baru di Phase 2
+## 🏗 Stack & Arsitektur
 
-**Sisi customer**
-- Keranjang (cart drawer) yang nempel di semua halaman, multi-item.
-- **Checkout + pembayaran tersimulasi**: QRIS, E-Wallet, Virtual Account, atau bayar di counter.
-- **Order tracking live** (`/track`) — status jalan otomatis saat barista maju: Placed → Paid → Preparing → Ready.
-- Badge ketersediaan jujur: "Habis", "Only N left", "Made to order".
+**Pure static HTML / CSS / JS** — tidak ada framework, tidak ada build step, bisa di-host gratis di Vercel.
 
-**Sisi owner (admin)**
-- **Recipe / BOM engine**: tiap menu punya resep bahan. Order otomatis mengurangi stok (estimasi, bisa di-adjust).
-- **Availability engine**: sistem menghitung "menu ini masih bisa dibuat berapa cup" dari stok. Kalau bahan habis → menu auto-hilang dari customer.
-- **Override 3-state per menu**: `Auto` (ikut engine) · `Force-sell` (tetap jual walau sistem bilang habis) · `Off` (sembunyikan manual).
-- **Manual inventory adjust** (+/-/Set) + **WA auto-order** ke vendor dengan backup routing.
-- **Stock ledger**: setiap pengurangan/penambahan stok tercatat → akuntabel & bisa diaudit.
-- **Notifikasi owner** (lonceng): order baru, pembayaran masuk, stok menipis, restock request, review baru.
-- Status pembayaran **Paid/Unpaid** per order + tombol "Mark paid".
+| Layer | Teknologi |
+|---|---|
+| Hosting | Vercel (static, zero-config) |
+| Real-time sync | Firebase Realtime Database (`dotcho-571f0`) |
+| State | `localStorage` + Firebase cross-device sync |
+| Auth | localStorage flag (demo-grade) |
+| i18n | Built-in EN/ID toggle (`js/i18n.js`) |
+
+Data flow: `localStorage` ↔ `Firebase RTDB` — setiap perubahan di satu device langsung sync ke semua device lain via `firebase-sync.js`.
 
 ---
 
-## 🗂 Struktur
+## 🗂 Struktur file
 
 ```
-index.html         Landing          → /
-menu.html          Katalog menu     → /menu
-order.html         Detail + cart    → /order?item=...
-checkout.html      Checkout         → /checkout
-track.html         Order tracking   → /track?id=...
-reviews.html       Reviews          → /reviews
-admin/login.html   Login owner      → /admin/login
-admin/index.html   Dashboard owner  → /admin  (redirect ke /admin/login jika belum login)
-js/data.js         Menu, add-ons, reviews, RESEP (BOM), metode bayar
-js/storage.js      Engine: cart, order, inventory, availability, ledger, notif
-js/main.js         Interaksi customer (cart drawer, toast, render menu)
-js/admin.js        Logika dashboard owner
-css/style.css      Tema customer   ·   css/admin.css  Tema admin
-vercel.json        Routing + headers config untuk Vercel
+/ (customer)
+  index.html       Landing page
+  menu.html        Katalog menu + filter + sort
+  order.html       Detail item + kustomisasi (gula, foam, takeaway)
+  checkout.html    Checkout + pembayaran tersimulasi + loyalty redeem
+  track.html       Live order tracking + leave review + loyalty card
+  reviews.html     Semua ulasan pelanggan
+
+/admin
+  login.html       Login owner
+  index.html       Dashboard owner (7 views)
+
+/js
+  data.js          Menu, add-ons, reviews seed, resep (BOM), payment methods
+  storage.js       Semua state & business logic (cart, order, inventory, loyalty, analytics, CSV)
+  main.js          Interaksi customer (cart drawer, render menu, i18n hooks)
+  admin.js         Logika seluruh 7 views admin
+  firebase-sync.js Cross-device sync via Firebase RTDB
+  i18n.js          EN/ID bilingual (169 key, full parity)
+
+/css
+  style.css        Tema customer
+  admin.css        Tema admin
 ```
+
+---
+
+## ✨ Fitur lengkap
+
+### Sisi customer
+- **Browse → Cart → Checkout → Tracking** — alur pre-order end-to-end.
+- **Cart drawer** multi-item, persist lintas halaman.
+- **Checkout tersimulasi**: QRIS, E-Wallet, Virtual Account.
+- **Order tracking live** (`/track?id=...`) — status update otomatis: Placed → Paid → Preparing → Ready.
+- **Leave a review** langsung dari tracking page (setelah order selesai), dengan live sync ke admin & reviews.html.
+- Badge ketersediaan akurat: "Habis", "Sisa N lagi", "Made to order".
+- **EN/ID toggle** — 169 key bilingual, termasuk konten dinamis (menu card, cart, opsi order).
+
+### Sisi owner (admin dashboard — 7 views)
+| View | Isi |
+|---|---|
+| **Dashboard** | KPI hari ini, recent orders, stock alerts, toko buka/tutup toggle |
+| **Orders** | Live feed pesanan, tab filter status, PAID/UNPAID pill, Start prep → Complete |
+| **Inventory** | Semua bahan + level stok, buildability engine, manual adjust (+/-/Set), ledger, WA vendor |
+| **Menu Management** | Override 3-state per item: Auto / Force-sell / Off |
+| **Reviews & Customers** | Semua review, distribusi rating, segmentasi tier member real |
+| **Members & Loyalty** | Registry member, poin, tier VIP/Regular/New, export CSV |
+| **Analytics & Reports** | Revenue 7 hari, top seller, status order, metode bayar, export CSV |
+
+### Loyalty system (Phase 4)
+- **Earn**: 1 poin / Rp1.000 pada setiap order berbayar.
+- **Redeem**: 100 poin = Rp1.000 diskon, bisa digunakan di checkout.
+- **Tier** otomatis berdasar lifetime points: New → Regular (≥500) → VIP (≥2.000).
+- Identitas member = **nomor WhatsApp** (normalisasi format `+62`/`0` otomatis).
+- Tersimpan di Firebase → lintas device & session.
+- Loyalty card tampil di tracking page setelah order selesai.
+
+### Inventory engine
+- **Resep (BOM)** per menu — order otomatis mengurangi stok bahan.
+- **Availability engine**: hitung "bisa buat berapa cup" dari stok saat ini → auto-hide menu kalau bahan habis.
+- **Predicted days remaining** per bahan.
+- **WA auto-order** ke vendor dengan template siap kirim + backup routing.
+
+---
 
 ## 🔐 Login admin (demo)
-- User: `biru` · Password: `dotcho2026`
+```
+Username : biru
+Password : dotcho2026
+```
 
 ---
 
 ## 🚀 Deploy ke Vercel
 
 ### Opsi A — Via GitHub (Recommended)
-1. Push folder ini ke repo GitHub (public atau private).
+1. Push folder ini ke repo GitHub.
 2. Buka [vercel.com](https://vercel.com) → **Add New Project** → Import repo.
-3. **Framework Preset**: pilih `Other` (bukan Next.js dll).
-4. Klik **Deploy** — selesai. `vercel.json` sudah ada, tidak perlu config tambahan.
+3. **Framework Preset**: `Other`.
+4. Klik **Deploy** — selesai. `vercel.json` sudah ada.
 
 ### Opsi B — Via Vercel CLI
 ```bash
-npm i -g vercel
-cd /path/ke/folder-ini
-vercel
-# Ikuti prompt: link ke existing project atau buat baru
+npm i -g vercel && cd /path/ke/folder-ini && vercel
 # Framework: Other | Root: ./
 ```
 
-### URL setelah deploy
-| Akses | URL |
+### URL
+| | URL |
 |---|---|
 | 🏠 Landing | `dotcho.vercel.app/` |
 | ☕ Menu | `dotcho.vercel.app/menu` |
@@ -78,34 +122,35 @@ vercel
 | 📍 Tracking | `dotcho.vercel.app/track?id=...` |
 | ⭐ Reviews | `dotcho.vercel.app/reviews` |
 | 🔒 Admin Login | `dotcho.vercel.app/admin/login` |
-| 📊 Dashboard | `dotcho.vercel.app/admin` *(redirect ke login jika belum auth)* |
-
-### Pemisahan customer ↔ admin (otomatis)
-- **Customer** → akses semua halaman di `/` (root). Tidak ada cara masuk ke admin kecuali tahu URL-nya.
-- **Admin/Owner** → akses `/admin` atau `/admin/login`. Ada **dua lapis perlindungan**:
-  1. `<head>` script di `admin/index.html` — redirect ke login *sebelum* DOM muncul (no flash).
-  2. Cek di `admin.js` sebagai fallback.
-- Google dan crawler tidak mengindex halaman admin (`X-Robots-Tag: noindex` via `vercel.json`).
-- Cache admin dinonaktifkan (`Cache-Control: no-store`) agar session stale tidak tersimpan.
-
-> **Note arsitektur**: Data disimpan di `localStorage` (per-browser). Artinya customer dan admin **harus di browser yang sama** agar order sync real-time (sesuai skenario demo: dua tab di satu browser). Untuk deployment produksi multi-device, ganti `js/storage.js` dengan API calls ke backend nyata.
+| 📊 Dashboard | `dotcho.vercel.app/admin` |
 
 ---
 
-## 🎬 Skenario demo (paling "wah")
-Buka **dua tab** di browser yang sama (data sinkron via localStorage):
-1. Tab A = customer (`/`), Tab B = admin (`/admin`).
-2. Di A: pilih menu → **Order Now** → checkout → pilih QRIS → **Simulate payment**.
-3. Lihat B *update otomatis*: lonceng notifikasi bunyi, order muncul **PAID**, stok bahan berkurang, ledger nambah baris.
-4. Di B: **Start prep → Complete**. Lihat halaman tracking di A ikut maju + toast.
-5. Coba **Choco Strawberry** (stok strawberry = 0 → sistem bilang OUT). Di B → Menu → set **Force-sell** → item kembali bisa dipesan.
-6. Di B → Inventory → **Straws** kritis → **WA** → kirim order ke vendor.
+## 🎬 Skenario demo
+
+Buka **dua tab** di browser yang sama, atau **dua device** yang berbeda (sama-sama connect internet — Firebase sync real-time):
+
+1. **Tab A** = customer (`/`), **Tab B** = admin (`/admin`).
+2. Di A: pilih menu → Order Now → checkout (isi nama + nomor WA untuk loyalty) → Simulate payment.
+3. Di B: lonceng notifikasi muncul, order masuk PAID, stok bahan berkurang, ledger nambah baris.
+4. Di B: **Start prep → Complete**. Di A, tracking page maju otomatis + toast notif.
+5. Coba **Choco Strawberry** (stok 0 → OUT). Di B → Menu → **Force-sell** → item bisa dipesan lagi.
+6. Di B → Inventory → **Straws** kritis → **📱 WA** → kirim template order ke vendor.
+7. Setelah order selesai (done), di A klik **Leave a Review** — review langsung muncul di reviews.html & admin tanpa reload.
+8. Di B → Members & Loyalty: lihat poin yang terakumulasi dari order berbayar tadi.
+9. Di B → Analytics: revenue, top seller, chart status order.
+10. Export CSV: orders / members / sales report langsung ke file.
 
 ---
 
 ## 🛣 Catatan arsitektur
-Data kini disimpan di **localStorage** (per-browser) agar prototipe ringan & gratis di-host.
-Lapisan `js/storage.js` sengaja dirancang dengan *method surface* yang stabil — migrasi ke
-backend nyata (Postgres/Supabase + REST) cukup mengganti isi method, tanpa mengubah UI.
 
-© 2026 .Cho · Prototype for AKU3404 · "Happiness in Every Sip"
+- **State layer** (`js/storage.js`) dirancang sebagai *stable method surface*: migrasi ke backend nyata (Supabase/Postgres + REST) cukup mengganti isi method, UI tidak perlu diubah.
+- **Firebase** digunakan untuk sync cross-device bukan sebagai primary storage — localStorage tetap berfungsi kalau Firebase offline (graceful fallback).
+- **Firebase Object Coercion**: Firebase RTDB menserialisasi array sebagai object bila key tidak kontinu. Storage._get() otomatis mengkoreksi ini untuk mencegah crash `.filter()/.map()` dll.
+- Data customer dan admin tersinkron via `dotcho_orders`, `dotcho_inventory`, `dotcho_reviews_user`, `dotcho_members`, `dotcho_store_status`, dan key lainnya.
+- Admin dilindungi via `X-Robots-Tag: noindex` + `Cache-Control: no-store` di `vercel.json`, plus auth gate di `<head>` admin/index.html (no flash of UI).
+
+---
+
+© 2026 .Cho · Prototype AKU3404 · "Happiness in Every Sip"
