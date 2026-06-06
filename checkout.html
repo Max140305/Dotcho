@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Checkout — .Cho</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="live-bar">
+    <div class="live-bar-inner">
+      <div class="live-bar-item"><span class="live-dot"></span><span>Open · Pre-order &amp; pay online</span></div>
+      <div class="live-bar-item">Avg pickup time: <strong>4 min</strong></div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="brand"><span class="dot">.</span>Cho</a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="menu.html">Menu</a>
+        <a href="reviews.html">Reviews</a>
+        <a href="index.html#story">Our Story</a>
+      </div>
+      <div class="nav-cta">
+        <button class="lang-toggle">EN / ID</button>
+        <a href="#" class="cart-btn"><span id="cart-count">0 items</span></a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="section" style="padding-top: 4rem;">
+    <div class="section-inner">
+      <a href="menu.html" class="back-link">← Continue shopping</a>
+      <div class="eyebrow">Secure checkout</div>
+      <h1 class="co-h1">Almost there.</h1>
+
+      <div class="co-layout" id="co-layout">
+        <!-- left: summary + details | right: payment -->
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="brand"><span class="dot">.</span>Cho</div>
+        <p>Premium chocolate beverages brewed daily at Kantin FEB UGM.</p>
+      </div>
+      <div class="footer-col"><h4>Order</h4><a href="menu.html">Full Menu</a></div>
+      <div class="footer-col"><h4>Community</h4><a href="reviews.html">All Reviews</a></div>
+      <div class="footer-col"><h4>Visit Us</h4><a>Kantin FEB UGM</a></div>
+    </div>
+    <div class="footer-bottom">
+      <div>© 2026 .Cho · System design prototype for AKU3404</div>
+      <div>Happiness in Every Sip</div>
+    </div>
+  </footer>
+
+  <!-- Payment modal -->
+  <div class="pay-modal-bg" id="pay-modal">
+    <div class="pay-modal" id="pay-modal-inner"></div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const state = { method: 'qris', name: '', phone: '', note: '' };
+
+    function lineCfg(l) {
+      const c = [];
+      if (l.config?.sugarLevel) c.push(l.config.sugarLevel);
+      if (l.config?.extraFoam === 'extra-foam') c.push('extra foam');
+      if (l.config?.takeaway === 'takeaway') c.push('takeaway');
+      if (l.config?.note) c.push('“' + l.config.note + '”');
+      return c.join(' · ') || 'No customization';
+    }
+
+    function render() {
+      const cart = Storage.getCart();
+      const layout = document.getElementById('co-layout');
+      if (cart.length === 0) {
+        layout.innerHTML = `<div class="co-empty">
+          <div class="cart-empty-cup">☕</div>
+          <h2>Keranjangmu kosong</h2>
+          <p>Belum ada yang dipesan. Yuk pilih cokelat dulu.</p>
+          <a href="menu.html" class="btn-maroon">Browse Menu</a></div>`;
+        return;
+      }
+      const subtotal = Storage.cartSubtotal();
+      layout.innerHTML = `
+        <div class="co-main">
+          <div class="co-card">
+            <h3 class="co-card-title">Your order</h3>
+            <div class="co-lines">
+              ${cart.map(l => {
+                const key = l._key.replace(/"/g, '&quot;');
+                return `<div class="co-line">
+                  <div class="co-line-cup" data-img="${l.image || ''}"></div>
+                  <div class="co-line-main">
+                    <div class="co-line-name">${l.name}</div>
+                    <div class="co-line-cfg">${lineCfg(l)}</div>
+                    <div class="cart-qty">
+                      <button onclick="coQty('${key}', ${l.qty - 1})">−</button>
+                      <span>${l.qty}</span>
+                      <button onclick="coQty('${key}', ${l.qty + 1})">+</button>
+                      <button class="cart-rm" onclick="coQty('${key}', 0)">Remove</button>
+                    </div>
+                  </div>
+                  <div class="co-line-price">${rupiah(l.lineTotal)}</div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+
+          <div class="co-card">
+            <h3 class="co-card-title">Pickup details</h3>
+            <label class="co-field"><span>Name for pickup *</span>
+              <input id="f-name" value="${state.name}" placeholder="e.g., Rania" oninput="state.name=this.value" /></label>
+            <label class="co-field"><span>WhatsApp (optional)</span>
+              <input id="f-phone" value="${state.phone}" placeholder="08xx — for payment & ready notifications" oninput="state.phone=this.value" /></label>
+            <label class="co-field"><span>Order note (optional)</span>
+              <input id="f-note" value="${state.note}" placeholder="e.g., ambil jam 12.30" oninput="state.note=this.value" /></label>
+          </div>
+        </div>
+
+        <aside class="co-side">
+          <div class="co-card co-pay">
+            <h3 class="co-card-title">Payment method</h3>
+            <div class="pay-methods">
+              ${PAYMENT_METHODS.map(p => `
+                <button class="pay-method ${state.method === p.id ? 'sel' : ''}" onclick="state.method='${p.id}'; render();">
+                  <div class="pay-method-radio"></div>
+                  <div><div class="pay-method-label">${p.label}</div><div class="pay-method-sub">${p.sub}</div></div>
+                  ${p.instant ? '<span class="pay-instant">instant</span>' : '<span class="pay-counter">at pickup</span>'}
+                </button>`).join('')}
+            </div>
+
+            <div class="co-totals">
+              <div class="co-total-row"><span>Subtotal</span><span>${rupiah(subtotal)}</span></div>
+              <div class="co-total-row"><span>Service fee</span><span>Rp0</span></div>
+              <div class="co-total-row grand"><span>Total</span><span>${rupiah(subtotal)}</span></div>
+            </div>
+
+            <button class="btn-maroon-full pay-cta" onclick="startPayment()">
+              Pay · ${rupiah(subtotal)}
+            </button>
+            <p class="co-secure">🔒 Semua pembayaran adalah simulasi untuk prototype ini. Tidak ada tagihan nyata.</p>
+          </div>
+        </aside>`;
+    }
+
+    function coQty(key, qty) { Storage.setCartQty(key, qty); updateCartBadges(); render(); }
+
+    // ---------- Payment flow ----------
+    function fakeQR() {
+      let cells = '';
+      for (let i = 0; i < 144; i++) cells += `<i style="background:${Math.random() > 0.5 ? 'var(--chocolate)' : 'transparent'}"></i>`;
+      return `<div class="qr"><div class="qr-grid">${cells}</div><div class="qr-logo">.Cho</div></div>`;
+    }
+    function fakeVA() {
+      const banks = { transfer: '8810 ' + Math.floor(1000000 + Math.random() * 8999999) };
+      return banks.transfer;
+    }
+
+    function startPayment() {
+      const cart = Storage.getCart();
+      if (cart.length === 0) { toast('Keranjang kosong', 'warn'); return; }
+      if (!state.name.trim()) { toast('Isi nama dulu untuk pickup ya', 'warn'); document.getElementById('f-name')?.focus(); return; }
+
+      const method = PAYMENT_METHODS.find(p => p.id === state.method);
+      const total = Storage.cartSubtotal();
+
+      const modal = document.getElementById('pay-modal');
+      const inner = document.getElementById('pay-modal-inner');
+      let body = '';
+      if (state.method === 'qris') {
+        body = `<div class="pay-step-title">Scan to pay</div>
+          <div class="pay-amount">${rupiah(total)}</div>
+          ${fakeQR()}
+          <p class="pay-hint">Buka e-wallet / m-banking → scan QRIS.</p>`;
+      } else if (state.method === 'ewallet') {
+        body = `<div class="pay-step-title">E-Wallet</div>
+          <div class="pay-amount">${rupiah(total)}</div>
+          <div class="pay-ewallets"><span>GoPay</span><span>OVO</span><span>DANA</span><span>ShopeePay</span></div>
+          <p class="pay-hint">Kamu akan diarahkan ke aplikasi e-wallet untuk menyelesaikan pembayaran.</p>`;
+      } else {
+        body = `<div class="pay-step-title">Virtual Account</div>
+          <div class="pay-amount">${rupiah(total)}</div>
+          <div class="pay-va"><span class="pay-va-bank">BCA Virtual Account</span><span class="pay-va-num">${fakeVA()}</span></div>
+          <p class="pay-hint">Transfer ke nomor VA di atas. Pembayaran terverifikasi otomatis.</p>`;
+      }
+      inner.innerHTML = `
+        ${body}
+        <button class="btn-maroon-full" id="pay-confirm" onclick="confirmPayment()">Simulate successful payment</button>
+        <button class="pay-cancel" onclick="document.getElementById('pay-modal').classList.remove('show')">Cancel</button>`;
+      modal.classList.add('show');
+    }
+
+    function confirmPayment() {
+      const btn = document.getElementById('pay-confirm');
+      btn.textContent = 'Verifying payment…';
+      btn.disabled = true;
+      setTimeout(() => finalize('paid'), 900); // simulate gateway latency
+    }
+
+    function finalize(payStatus) {
+      const items = Storage.getCart();
+      const order = Storage.placeOrder({
+        customer: { name: state.name.trim() || 'Guest', phone: state.phone.trim(), note: state.note.trim() },
+        items,
+        payment: { method: state.method, status: payStatus },
+      });
+      Storage.clearCart();
+      updateCartBadges();
+      window.location.href = `track.html?id=${order.id}&new=1`;
+    }
+
+    document.getElementById('pay-modal').addEventListener('click', e => {
+      if (e.target.id === 'pay-modal') e.currentTarget.classList.remove('show');
+    });
+
+    render();
+  </script>
+</body>
+</html>

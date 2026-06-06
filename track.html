@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Track Order — .Cho</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="live-bar">
+    <div class="live-bar-inner">
+      <div class="live-bar-item"><span class="live-dot"></span><span>Live order tracking</span></div>
+      <div class="live-bar-item">Avg pickup time: <strong>4 min</strong></div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="brand"><span class="dot">.</span>Cho</a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="menu.html">Menu</a>
+        <a href="reviews.html">Reviews</a>
+        <a href="index.html#story">Our Story</a>
+      </div>
+      <div class="nav-cta">
+        <button class="lang-toggle">EN / ID</button>
+        <a href="#" class="cart-btn"><span id="cart-count">0 items</span></a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="section" style="padding-top: 4rem;">
+    <div class="section-inner" style="max-width: 720px;">
+      <div id="trk-root"><!-- rendered by JS --></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="brand"><span class="dot">.</span>Cho</div>
+        <p>Premium chocolate beverages brewed daily at Kantin FEB UGM.</p>
+      </div>
+      <div class="footer-col"><h4>Order</h4><a href="menu.html">Full Menu</a></div>
+      <div class="footer-col"><h4>Community</h4><a href="reviews.html">All Reviews</a></div>
+      <div class="footer-col"><h4>Visit Us</h4><a>Kantin FEB UGM</a></div>
+    </div>
+    <div class="footer-bottom">
+      <div>© 2026 .Cho · System design prototype for AKU3404</div>
+      <div>Happiness in Every Sip</div>
+    </div>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const orderId = getQueryParam('id');
+    const isNew = getQueryParam('new') === '1';
+    let lastStatus = null;
+
+    // status → step index for the timeline
+    const STEPS = [
+      { key: 'placed',   label: 'Order placed',  desc: 'We received your order' },
+      { key: 'paid',     label: 'Payment',       desc: 'Confirmed' },
+      { key: 'progress', label: 'Preparing',     desc: 'Barista is on it' },
+      { key: 'done',     label: 'Ready',         desc: 'Pick up at counter' },
+    ];
+
+    function stepIndex(o) {
+      if (o.status === 'done') return 3;
+      if (o.status === 'progress') return 2;
+      if (o.payment?.status === 'paid') return 1;
+      return 0;
+    }
+
+    function render() {
+      const root = document.getElementById('trk-root');
+      const o = orderId ? Storage.getOrder(orderId) : null;
+      if (!o) {
+        root.innerHTML = `<div class="co-empty"><div class="cart-empty-cup">🔎</div>
+          <h2>Order not found</h2><p>Link tracking tidak valid atau data sudah ter-reset.</p>
+          <a href="menu.html" class="btn-maroon">Order again</a></div>`;
+        return;
+      }
+
+      const idx = stepIndex(o);
+      const paid = o.payment?.status === 'paid';
+      const cancelled = o.status === 'cancelled';
+
+      if (isNew && lastStatus === null) {
+        toast(paid ? 'Payment received — order confirmed!' : 'Order placed — pay at counter', 'success');
+      }
+      if (lastStatus !== null && o.status !== lastStatus) {
+        if (o.status === 'progress') toast('Barista mulai bikin pesananmu ☕', 'info');
+        if (o.status === 'done') toast('Pesananmu siap! Ambil di counter 🎉', 'success');
+      }
+      lastStatus = o.status;
+
+      const itemsHtml = o.items.map(l => `
+        <div class="trk-item">
+          <div class="trk-item-cup" data-img="${l.image || ''}"></div>
+          <div><div class="trk-item-name">${l.name} × ${l.qty}</div>
+          <div class="trk-item-cfg">${[l.config?.sugarLevel, l.config?.extraFoam === 'extra-foam' ? 'extra foam' : '', l.config?.takeaway === 'takeaway' ? 'takeaway' : ''].filter(Boolean).join(' · ')}</div></div>
+          <div class="trk-item-price">${rupiah(l.lineTotal)}</div>
+        </div>`).join('');
+
+      const timeline = STEPS.map((s, i) => {
+        let cls = i < idx ? 'done' : i === idx ? 'active' : '';
+        let sub = s.desc;
+        if (s.key === 'paid') sub = paid ? `Paid · ${o.payment.method.toUpperCase()}` : 'Pay at counter';
+        if (s.key === 'paid' && !paid && idx >= 1) cls = 'pending';
+        return `<div class="trk-step ${cls}">
+          <div class="trk-dot">${i < idx ? '✓' : i + 1}</div>
+          <div class="trk-step-body"><div class="trk-step-label">${s.label}</div><div class="trk-step-desc">${sub}</div></div>
+        </div>`;
+      }).join('');
+
+      const statusBanner = cancelled
+        ? `<div class="trk-banner cancelled">Order cancelled</div>`
+        : o.status === 'done'
+          ? `<div class="trk-banner ready">🎉 Ready for pickup!</div>`
+          : `<div class="trk-banner">${o.status === 'progress' ? 'Being prepared — hang tight' : 'Order received'} · est. ~4 min</div>`;
+
+      root.innerHTML = `
+        <a href="menu.html" class="back-link">← Back to menu</a>
+        <div class="eyebrow">Order ${o.id}</div>
+        <h1 class="co-h1">Hi ${o.customer?.name || 'there'}, here's your order.</h1>
+        ${statusBanner}
+
+        <div class="co-card trk-card">
+          <div class="trk-timeline">${timeline}</div>
+        </div>
+
+        <div class="co-card trk-card">
+          <h3 class="co-card-title">Items</h3>
+          ${itemsHtml}
+          <div class="co-totals">
+            <div class="co-total-row"><span>Payment</span><span class="pay-pill ${paid ? 'paid' : 'unpaid'}" style="position:static">${paid ? 'PAID · ' + o.payment.method.toUpperCase() : 'UNPAID · counter'}</span></div>
+            <div class="co-total-row grand"><span>Total</span><span>${rupiah(o.total)}</span></div>
+          </div>
+        </div>
+
+        <div class="trk-actions">
+          <a href="menu.html" class="btn-cream">Order more</a>
+          <a href="reviews.html" class="btn-maroon">Leave a review</a>
+        </div>
+        <p class="co-secure" style="text-align:center;margin-top:1rem;">This page updates live as the kitchen advances your order.</p>`;
+    }
+
+    render();
+    // Live updates: storage event (cross-tab) + polling fallback
+    window.addEventListener('storage', e => { if (e.key === STORAGE_KEYS.ORDERS) render(); });
+    setInterval(() => { if (document.visibilityState === 'visible') render(); }, 3000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Menu — .Cho</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="live-bar">
+    <div class="live-bar-inner">
+      <div class="live-bar-item">
+        <span class="live-dot"></span>
+        <span>Open · Pre-order available</span>
+      </div>
+      <div class="live-bar-item"><strong data-cups-today>67</strong>&nbsp;cups served today</div>
+      <div class="live-bar-item">Avg wait: <strong>4 min</strong></div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="brand"><span class="dot">.</span>Cho</a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="menu.html" class="active">Menu</a>
+        <a href="reviews.html">Reviews</a>
+        <a href="index.html#story">Our Story</a>
+      </div>
+      <div class="nav-cta">
+        <button class="lang-toggle">EN / ID</button>
+        <a href="menu.html" class="cart-btn"><span>0 items</span></a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="section" style="padding-top: 5rem;">
+    <div class="section-inner">
+      <div class="eyebrow">Our Menu</div>
+      <h1 class="section-title">Sixteen ways to taste <em>chocolate.</em></h1>
+      <p class="section-desc">
+        Every cup is crafted fresh. Customize sugar level, foam, and takeaway preference on the next screen.
+      </p>
+
+      <div class="filter-bar">
+        <button class="filter-chip active" data-filter="all">All Menu</button>
+        <button class="filter-chip" data-filter="Choco Series">Choco Series</button>
+        <button class="filter-chip" data-filter="Snacks">Snacks</button>
+        <select class="sort-select" id="sort-select">
+          <option value="default">Sort: Featured</option>
+          <option value="loved">Most Loved</option>
+          <option value="rating">Highest Rated</option>
+          <option value="price-low">Price: Low → High</option>
+          <option value="price-high">Price: High → Low</option>
+        </select>
+      </div>
+
+      <div class="menu-grid" id="all-menu"></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="brand"><span class="dot">.</span>Cho</div>
+        <p>Premium chocolate beverages brewed daily at Kantin FEB UGM.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Order</h4>
+        <a href="menu.html">Full Menu</a>
+        <a href="#">Pre-order</a>
+      </div>
+      <div class="footer-col">
+        <h4>Community</h4>
+        <a href="reviews.html">All Reviews</a>
+        <a href="#">Loyalty Program</a>
+      </div>
+      <div class="footer-col">
+        <h4>Visit Us</h4>
+        <a>Kantin FEB UGM</a>
+        <a>Mon–Fri · 08.00–16.00</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div>© 2026 .Cho · System design prototype for AKU3404</div>
+      <div>Happiness in Every Sip</div>
+    </div>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

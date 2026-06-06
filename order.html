@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Order — .Cho</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="live-bar">
+    <div class="live-bar-inner">
+      <div class="live-bar-item">
+        <span class="live-dot"></span>
+        <span>Open · Pre-order available</span>
+      </div>
+      <div class="live-bar-item">Avg pickup time: <strong>4 min</strong></div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="brand"><span class="dot">.</span>Cho</a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="menu.html" class="active">Menu</a>
+        <a href="reviews.html">Reviews</a>
+        <a href="index.html#story">Our Story</a>
+      </div>
+      <div class="nav-cta">
+        <button class="lang-toggle">EN / ID</button>
+        <a href="menu.html" class="cart-btn"><span id="cart-count">0 items</span></a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="section" style="padding-top: 4rem;">
+    <div class="section-inner">
+      <a href="menu.html" style="font-size: 0.88rem; color: var(--text-soft); margin-bottom: 2rem; display: inline-block;">← Back to Menu</a>
+
+      <div class="order-layout" id="order-layout">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Related reviews -->
+  <section class="section" style="padding-top: 0;">
+    <div class="section-inner">
+      <div class="eyebrow">What customers say</div>
+      <h2 class="section-title" style="margin-bottom: 3rem;">Reviews for <em id="review-menu-name">this drink</em></h2>
+      <div class="full-reviews-grid" id="item-reviews"></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="brand"><span class="dot">.</span>Cho</div>
+        <p>Premium chocolate beverages brewed daily at Kantin FEB UGM.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Order</h4>
+        <a href="menu.html">Full Menu</a>
+      </div>
+      <div class="footer-col">
+        <h4>Community</h4>
+        <a href="reviews.html">All Reviews</a>
+      </div>
+      <div class="footer-col">
+        <h4>Visit Us</h4>
+        <a>Kantin FEB UGM</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div>© 2026 .Cho · System design prototype for AKU3404</div>
+      <div>Happiness in Every Sip</div>
+    </div>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    // Order page logic
+    const itemId = getQueryParam('item') || MENU[0].id;
+    // Apply availability overrides from admin
+    const menuWithOverrides = Storage.applyMenuOverrides(MENU);
+    const item = menuWithOverrides.find(m => m.id === itemId) || menuWithOverrides[0];
+
+    const state = {
+      qty: 1,
+      sugarLevel: 'normal',
+      extraFoam: 'no-foam',
+      takeaway: 'dine-in',
+      note: '',
+    };
+
+    function calcTotal() {
+      let base = item.price;
+      base += ADDONS.extraFoam.options.find(o => o.id === state.extraFoam).price;
+      base += ADDONS.takeaway.options.find(o => o.id === state.takeaway).price;
+      return base * state.qty;
+    }
+
+    function renderOrderPage() {
+      const ctaDisabled = !item.available ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
+      const availHint = !item.available
+        ? '<div class="order-avail out">Sedang habis — silakan pilih menu lain.</div>'
+        : (item.forced
+            ? '<div class="order-avail forced">Made to order — dibuat khusus untukmu.</div>'
+            : (item.makeable !== undefined && item.makeable <= 8
+                ? `<div class="order-avail low">Tinggal ${item.makeable} cup lagi hari ini.</div>` : ''));
+      const html = `
+        <div class="order-hero-img menu-img" data-img="${item.image}">
+          ${item.mostLoved ? '<div class="badge-loved most">♥ Most Loved</div>' : ''}
+          ${!item.available ? '<div class="badge-habis">Habis</div>' : ''}
+          <div class="mini-cup"></div>
+        </div>
+
+        <div class="order-detail">
+          <div style="font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--maroon-warm); font-weight: 600; margin-bottom: 0.6rem;">${item.category}${item.isHot ? ' · Hot' : ''}</div>
+          <h1>${item.name}</h1>
+          <div class="order-cat-rating">
+            <div><span class="stars">${starString(item.rating)}</span> ${item.rating.toFixed(1)} · ${item.reviewCount} reviews</div>
+          </div>
+          <p class="order-notes">"${item.notes}"</p>
+
+          <div class="order-price-display" id="total-display">${rupiah(item.price)}</div>
+          ${availHint}
+
+          ${renderOptionGroup('Sugar Level', ADDONS.sugarLevel, 'sugarLevel')}
+          ${renderOptionGroup('Extra Foam', ADDONS.extraFoam, 'extraFoam')}
+          ${renderOptionGroup('Dine-in / Takeaway', ADDONS.takeaway, 'takeaway')}
+
+          <div class="option-group">
+            <div class="option-label">Add a note <span style="text-transform: none; letter-spacing: normal; font-weight: 400; color: var(--text-soft); font-size: 0.78rem;">(optional)</span></div>
+            <textarea class="note-input" placeholder="Catatan untuk barista — e.g., 'less ice please'" id="order-note"></textarea>
+          </div>
+
+          <div class="qty-add-bar">
+            <div class="qty-control">
+              <button class="qty-btn" onclick="changeQty(-1)">−</button>
+              <div class="qty-num" id="qty-num">1</div>
+              <button class="qty-btn" onclick="changeQty(1)">+</button>
+            </div>
+            <button class="add-cart-btn ghost" onclick="addToCartFromOrder(false)" ${ctaDisabled}>Add to Cart</button>
+            <button class="add-cart-btn" onclick="orderNow()" ${ctaDisabled}>
+              Order Now · <span id="cart-total">${rupiah(item.price)}</span>
+            </button>
+          </div>
+        </div>
+      `;
+      document.getElementById('order-layout').innerHTML = html;
+      attachOptionListeners();
+      updateTotal();
+    }
+
+    function renderOptionGroup(label, addonGroup, stateKey) {
+      const required = addonGroup.required ? '<span class="option-required">Required</span>' : '';
+      return `
+        <div class="option-group">
+          <div class="option-label">${label} ${required}</div>
+          <div class="option-row">
+            ${addonGroup.options.map(opt => `
+              <button class="option-pill ${state[stateKey] === opt.id ? 'selected' : ''}"
+                data-key="${stateKey}" data-val="${opt.id}">
+                ${opt.label}${opt.price > 0 ? ` <span class="price-add">+${rupiah(opt.price)}</span>` : ''}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function attachOptionListeners() {
+      document.querySelectorAll('.option-pill').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const key = e.currentTarget.dataset.key;
+          const val = e.currentTarget.dataset.val;
+          state[key] = val;
+          renderOrderPage();
+        });
+      });
+      const noteInput = document.getElementById('order-note');
+      if (noteInput) noteInput.addEventListener('input', (e) => state.note = e.target.value);
+    }
+
+    function changeQty(delta) {
+      state.qty = Math.max(1, state.qty + delta);
+      document.getElementById('qty-num').textContent = state.qty;
+      updateTotal();
+    }
+
+    function updateTotal() {
+      const total = calcTotal();
+      const totalDisplay = document.getElementById('total-display');
+      const cartTotal = document.getElementById('cart-total');
+      if (totalDisplay) totalDisplay.textContent = rupiah(total);
+      if (cartTotal) cartTotal.textContent = rupiah(total);
+    }
+
+    function buildLine() {
+      const extraFoam = ADDONS.extraFoam.options.find(o => o.id === state.extraFoam).price;
+      const takeaway = ADDONS.takeaway.options.find(o => o.id === state.takeaway).price;
+      return {
+        itemId: item.id, name: item.name, image: item.image,
+        unitPrice: item.price + extraFoam + takeaway,
+        qty: state.qty,
+        config: { sugarLevel: state.sugarLevel, extraFoam: state.extraFoam, takeaway: state.takeaway, note: state.note },
+      };
+    }
+
+    function addToCartFromOrder(silentNav) {
+      if (!item.available) return;
+      addToCart(buildLine(), { open: !silentNav });
+    }
+
+    function orderNow() {
+      if (!item.available) return;
+      Storage.addToCart(buildLine());
+      updateCartBadges();
+      window.location.href = 'checkout.html';
+    }
+
+    function renderItemReviews() {
+      const itemReviews = REVIEWS.filter(r => r.menuId === item.id);
+      const target = document.getElementById('item-reviews');
+      const nameTarget = document.getElementById('review-menu-name');
+      if (nameTarget) nameTarget.textContent = item.name;
+
+      if (itemReviews.length === 0) {
+        target.innerHTML = `<div style="grid-column: 1/-1; padding: 3rem; background: var(--ivory); border-radius: var(--r-lg); text-align: center; color: var(--text-soft);">
+          Belum ada review untuk menu ini — jadilah yang pertama setelah pickup!
+        </div>`;
+        return;
+      }
+      target.innerHTML = itemReviews.map(r => renderReviewCard(r, false)).join('');
+    }
+
+    renderOrderPage();
+    renderItemReviews();
+  </script>
+</body>
+</html>
