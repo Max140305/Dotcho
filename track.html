@@ -38,6 +38,9 @@
   <section class="section" style="padding-top: 4rem;">
     <div class="section-inner" style="max-width: 720px;">
       <div id="trk-root"><!-- rendered by JS --></div>
+      <!-- review form lives outside trk-root so setInterval / storage-event
+           re-renders never wipe it while the user is filling it in -->
+      <div id="review-form-wrap"></div>
     </div>
   </section>
 
@@ -181,10 +184,9 @@
 
         <div class="trk-actions">
           <a href="menu.html" class="btn-cream">Order more</a>
-          ${o.status === 'done' ? `<button class="btn-maroon" onclick="showReviewForm('${o.id}')">⭐ Leave a Review</button>` : ''}
+          ${o.status === 'done' && !window._reviewDone ? `<button class="btn-maroon" onclick="showReviewForm('${o.id}')">⭐ Leave a Review</button>` : ''}
           ${(o.status === 'new' && !cancelled) ? `<button onclick="cancelCustomer('${o.id}')" style="background:none;border:1.5px solid #B5302E;color:#B5302E;padding:.85rem 1.8rem;border-radius:999px;font-weight:600;cursor:pointer;">Cancel Order</button>` : ''}
         </div>
-        ${o.status === 'done' ? `<div id="review-form-wrap"></div>` : ''}
         <p class="co-secure" style="text-align:center;margin-top:1rem;">This page updates live as the kitchen advances your order.</p>`;
     }
 
@@ -239,6 +241,8 @@
         Storage.addReview({ menuId, author: name, avatar: name[0].toUpperCase(), rating: selectedStars, text });
         wrap.innerHTML = '<div class="co-card" style="text-align:center;padding:2rem;margin-top:1rem;"><div style="font-size:2rem;">🎉</div><p style="font-weight:600;color:var(--maroon-deep);margin:.5rem 0;">Review terkirim!</p><p style="font-size:.85rem;color:var(--text-soft);">Terima kasih sudah sharing pengalamanmu.</p></div>';
         toast('Review berhasil dikirim! ⭐', 'success');
+        window._reviewDone = true; // hide "Leave a Review" button on next render
+        render(); // immediately remove the button from trk-actions
       };
     }
 
